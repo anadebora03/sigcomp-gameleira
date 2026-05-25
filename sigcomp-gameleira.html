@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SIGCOMP Gameleira</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+:root{--bg:#f0f4f1;--card:#ffffff;--brd:#d4e8d9;--txt:#0f172a;--muted:#4a6155;--inp:#f5f9f6;--hov:#e8f5ec;--sb:#0d3d22;--sbf:#d1fae5;--sbb:#1a5c38}
+*{box-sizing:border-box;margin:0;padding:0}
+body,html,#root{height:100%;font-family:system-ui,sans-serif}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#modal-root{position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:99999;}
+#modal-root>*{pointer-events:all;}
+@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="modal-root"></div>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px"><div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#1a5c38;border-radius:50%;animation:spin 1s linear infinite"></div><p style="color:#64748b;font-size:13px">Carregando SIGCOMP...</p></div></div>
+<script type="text/babel">
+
+const {useState,useEffect,useRef,useCallback}=React;
+const G='#1a5c38',G2='#22744a',G3='#2d8f5e',GB='#f0f7f3',GD='#c3ddd0',GOLD='#c9a227',GOLDD='#a07800',NAVY='#1a3a6e',NAVYD='#0d2a4a';
+let _id=1000; const uid=()=>{return ++_id;};
+const td=()=>new Date().toISOString().split('T')[0];
+const fD=d=>d?new Date(d+'T12:00:00').toLocaleDateString('pt-BR'):'--';
+const fDT=d=>d?new Date(d).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'--';
+const fR=v=>v?Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'--';
+const fKB=b=>b>1048576?(b/1048576).toFixed(1)+' MB':(b/1024).toFixed(0)+' KB';
+const isOv=p=>p&&new Date(p)<new Date(td()+'T00:00:00');
+const isSn=p=>{if(!p)return false;const d=(new Date(p)-new Date(td()+'T00:00:00'))/86400000;return d>=0&&d<=5;};
+const gS=id=>SECS.find(s=>s.id===id)||{sigla:'?',cor:'#94a3b8',nome:'--'};
+const gT=(l,v)=>l.find(s=>s.v===v)||l[0];
+const fmtM=m=>{if(!m)return'--';const[y,mo]=m.split('-');return ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][Number(mo)]+'/'+y;};
+function useMob(){const[w,sw]=useState(window.innerWidth);useEffect(()=>{const f=()=>sw(window.innerWidth);window.addEventListener('resize',f);return()=>window.removeEventListener('resize',f);},[]);return w<640;}
+
+const SECS=[
+  {id:1,nome:'Secretaria de Saúde e Saneamento',sigla:'SAÚDE',cor:'#1a5c38'},
+  {id:2,nome:'Secretaria de Educação',sigla:'EDUC',cor:'#1a5c38'},
+  {id:3,nome:'Secretaria de Assistência Social',sigla:'ASSIST',cor:'#1a5c38'},
+  {id:4,nome:'Secretaria de Esportes, Cultura, Turismo e Juventude',sigla:'ECTJ',cor:'#1a5c38'},
+  {id:5,nome:'Secretaria de Desenvolvimento Econômico',sigla:'DECO',cor:'#1a5c38'},
+  {id:6,nome:'Secretaria de Infraestrutura, Obras e Transportes',sigla:'INFRA',cor:'#1a5c38'},
+  {id:7,nome:'Secretaria de Administração',sigla:'ADMIN',cor:'#1a5c38'},
+  {id:8,nome:'Secretaria da Fazenda',sigla:'FAZ',cor:'#1a5c38'},
+  {id:9,nome:'Secretaria de Finanças',sigla:'FIN',cor:'#1a5c38'},
+  {id:10,nome:'Secretaria de Agricultura',sigla:'AGRI',cor:'#1a5c38'},
+];
+const STO=[
+  {v:'recebido',l:'Recebido',cor:'#374151',bg:'#e5e7eb'},
+  {v:'analise',l:'Em Análise',cor:'#1e3a5f',bg:'#bfdbfe'},
+  {v:'andamento',l:'Em Andamento',cor:'#7a5800',bg:'#fef3c7'},
+  {v:'aguardando',l:'Aguardando Doc.',cor:'#1e3a5f',bg:'#bfdbfe'},
+  {v:'pendente',l:'Pendente',cor:'#7a5800',bg:'#fef3c7'},
+  {v:'licit_solicit',l:'Licit. Solicitada',cor:'#1e3a5f',bg:'#bfdbfe'},
+  {v:'concluido',l:'Concluído',cor:'#065f46',bg:'#d1fae5'},
+  {v:'arquivado',l:'Arquivado',cor:'#374151',bg:'#e5e7eb'},
+];
+const PRI=[
+  {v:'baixa',l:'Baixa',cor:'#1a3a6e',bg:'#e8eef7'},
+  {v:'media',l:'Média',cor:'#1a3a6e',bg:'#e8eef7'},
+  {v:'alta',l:'Alta',cor:'#1a3a6e',bg:'#e8eef7'},
+  {v:'urgente',l:'Urgente',cor:'#dc2626',bg:'#fef2f2'},
+];
+const SPL=[
+  {v:'solicitado',l:'Solicitado',cor:'#374151',bg:'#e5e7eb'},
+  {v:'cotacao',l:'Em Cotação',cor:'#1e3a5f',bg:'#bfdbfe'},
+  {v:'elaboracao',l:'Em Elaboração',cor:'#7a5800',bg:'#fef3c7'},
+  {v:'juridico',l:'Análise Jurídica',cor:'#1e3a5f',bg:'#bfdbfe'},
+  {v:'publicado',l:'Publicado',cor:'#065f46',bg:'#d1fae5'},
+  {v:'andamento',l:'Em Andamento',cor:'#7a5800',bg:'#fef3c7'},
+  {v:'finalizado',l:'Finalizado',cor:'#065f46',bg:'#d1fae5'},
+  {v:'cancelado',l:'Cancelado',cor:'#991b1b',bg:'#fecaca'},
+];
+const SPQ=[
+  {v:'aguardando',l:'Aguardando',cor:'#4a6155',bg:'#d1fae5'},
+  {v:'andamento',l:'Em Andamento',cor:'#7a5800',bg:'#fef3c7'},
+  {v:'concluida',l:'Concluída',cor:'#065f46',bg:'#d1fae5'},
+  {v:'cancelada',l:'Cancelada',cor:'#991b1b',bg:'#fecaca'},
+  {v:'deserta',l:'Deserta',cor:'#1e3a5f',bg:'#bfdbfe'},
+];
+const MOD={
+  pregao_eletronico:'Pregão Eletrônico',
+  pregao_presencial:'Pregão Presencial',
+  concorrencia:'Concorrência',
+  tomada_precos:'Tomada de Preços',
+  convite:'Convite',
+  dispensa:'Dispensa de Licitação',
+  inexigibilidade:'Inexigibilidade',
+};
+const MESES=['2025-01','2025-02','2025-03','2025-04','2025-05','2025-06','2025-07','2025-08','2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'];
+const PERF={administrador:'Administrador',diretor_compras:'Dir. Compras',setor_compras:'Setor Compras',secretaria:'Secretaria',visualizador:'Visualizador'};
+const PCOR={administrador:'#dc2626',diretor_compras:'#f97316',setor_compras:'#1a5c38',secretaria:'#1a3a6e',visualizador:'#64748b'};
+
+const INIT_OF=[
+  {id:1,numero:'OFF-2025-0001',secretaria_id:1,responsavel:'Dr. Luís',resp_acomp:'Ana Lima',data:'2025-05-10',assunto:'Aquisição urgente de medicamentos para UBS Central',descricao:'Solicitação emergêncial de medicamentos essenciais.',tipo:'Compra',prioridade:'urgente',prazo:'2025-05-25',status:'andamento',obs:'Verificar estoque.',favorito:true,historico:[{data:'2025-05-10',acao:'Recebido',usuário:'Sistema'}],comentarios:[{texto:'Estoque crítico!',data:'2025-05-12',usuário:'Dr. Luís'}],anexos:[]},
+  {id:2,numero:'OFF-2025-0002',secretaria_id:2,responsavel:'Marcelo',resp_acomp:'Ana Lima',data:'2025-05-12',assunto:'Material escolar para escolas municipais 2º semestre',descricao:'',tipo:'Compra',prioridade:'alta',prazo:'2025-06-15',status:'licit_solicit',obs:'',favorito:false,historico:[],comentarios:[],anexos:[]},
+  {id:3,numero:'OFF-2025-0003',secretaria_id:6,responsavel:'',resp_acomp:'',data:'2025-05-14',assunto:'Pavimentação Rua das Flores bairro Centro',descricao:'420 metros paralelepípedo.',tipo:'Servico',prioridade:'media',prazo:'2025-08-01',status:'analise',obs:'',favorito:false,historico:[],comentarios:[],anexos:[]},
+  {id:4,numero:'OFF-2025-0004',secretaria_id:3,responsavel:'',resp_acomp:'Ana Lima',data:'2025-05-08',assunto:'Cestas básicas emergênciais famílias vulneráveis',descricao:'300 cestas.',tipo:'Compra',prioridade:'urgente',prazo:'2025-05-18',status:'pendente',obs:'Falta declaração.',favorito:true,historico:[],comentarios:[],anexos:[]},
+  {id:5,numero:'OFF-2025-0005',secretaria_id:7,responsavel:'',resp_acomp:'',data:'2025-05-16',assunto:'Reforma do prédio da Secretaria de Administração',descricao:'',tipo:'Servico',prioridade:'media',prazo:'2025-10-01',status:'recebido',obs:'',favorito:false,historico:[],comentarios:[],anexos:[]},
+  {id:6,numero:'OFF-2025-0006',secretaria_id:8,responsavel:'',resp_acomp:'Ana Lima',data:'2025-04-20',assunto:'Renovação licença Sistema Folha de Pagamento',descricao:'',tipo:'Servico',prioridade:'alta',prazo:'2025-05-30',status:'concluido',obs:'',favorito:false,historico:[],comentarios:[],anexos:[]},
+];
+const INIT_PL=[
+  {id:1,numero:'PL-2025-0001',secretaria_id:1,modalidade:'pregao_eletronico',assunto:'Medicamentos hospitalares Lote 01/2025',status:'elaboracao',data_abertura:'2025-05-10',data_prevista:'2025-06-10',responsavel:'Ana Lima',valor_estimado:45000,valor_final:'',obs:'',anexos:[],contrato:null},
+  {id:2,numero:'PL-2025-0002',secretaria_id:2,modalidade:'dispensa',assunto:'Material escolar emergência',status:'publicado',data_abertura:'2025-05-12',data_prevista:'2025-05-30',responsavel:'Carlos Melo',valor_estimado:12000,valor_final:'',obs:'',anexos:[],contrato:null},
+  {id:3,numero:'PL-2025-0003',secretaria_id:6,modalidade:'concorrencia',assunto:'Pavimentação de vias urbanas Lote 01',status:'solicitado',data_abertura:'2025-05-14',data_prevista:'2025-07-20',responsavel:'Jose Ferreira',valor_estimado:380000,obs:'',anexos:[]},
+];
+const INIT_PQ=[
+  {id:1,numero:'PQ-2025-0001',secretaria_id:1,objeto:'Paracetamol 500mg 1.000 comprimidos',descricao:'Caixa 20 comprimidos. Qtd: 50 caixas.',oficio_ref:'OFF-2025-0001',periodo:'2025-05',prazo_cotacao:'2025-05-20',responsavel:'Ana Lima',status:'concluida',obs:'3 fornecedores.',fornecedores:[{id:101,nome:'Distribuidora Saúde PE',cnpj:'12.345.678/0001-90',contato:'comercial@saudep.com.br',valor:'450',obs:'Entrega 3 dias',arquivos:[]},{id:102,nome:'Farmacia Atacado NE',cnpj:'98.765.432/0001-11',contato:'(81) 3333-4444',valor:'520',obs:'',arquivos:[]},{id:103,nome:'MedSupply Brasil',cnpj:'11.222.333/0001-55',contato:'vendas@medsupply.com.br',valor:'480',obs:'',arquivos:[]}],anexos:[]},
+  {id:2,numero:'PQ-2025-0002',secretaria_id:2,objeto:'Material escolar kit pedagógico 2025',descricao:'Cadernos lápis e borrachas para 500 alunos.',oficio_ref:'OFF-2025-0002',periodo:'2025-05',prazo_cotacao:'2025-06-05',responsavel:'Ana Lima',status:'andamento',obs:'',fornecedores:[{id:104,nome:'Papelaria Central Recife',cnpj:'55.444.333/0001-22',contato:'contato@papelaria.com.br',valor:'8900',obs:''},{id:105,nome:'Distribuidora Escolar PE',cnpj:'33.222.111/0001-44',contato:'(81) 4444-5555',valor:'',obs:'Aguardando'}],anexos:[]},
+  {id:3,numero:'PQ-2025-0003',secretaria_id:6,objeto:'Pedras paralelepípedo granítico',descricao:'420m lineares.',oficio_ref:'OFF-2025-0003',periodo:'2025-05',prazo_cotacao:'2025-07-10',responsavel:'Carlos Melo',status:'aguardando',obs:'',fornecedores:[{id:106,nome:'Construtora Gameleira',cnpj:'77.888.999/0001-33',contato:'comercial@construtora.com.br',valor:'',obs:''}],anexos:[]},
+];
+const INIT_US=[
+  {id:1,nome:'Carlos Administrador',cargo:'Administrador',email:'admin@gameleira.pe.gov.br',perfil:'administrador',ativo:true,avatar:''},
+  {id:2,nome:'Ana Lima',cargo:'Diretora de Compras',email:'compras@gameleira.pe.gov.br',perfil:'diretor_compras',ativo:true,avatar:''},
+  {id:3,nome:'Dr. Luís',cargo:'Secretário de Saúde',email:'saude@gameleira.pe.gov.br',perfil:'secretaria',ativo:true,avatar:''},
+];
+const INIT_LG=[
+  {id:1,usuário:'Ana Lima',modulo:'Ofícios',tipo:'create',descricao:'Criou OFF-2025-0001',data:'2025-05-22T08:15:00'},
+  {id:2,usuário:'Admin',modulo:'Processos',tipo:'create',descricao:'Criou PL-2025-0001',data:'2025-05-22T09:30:00'},
+];
+
+const IS={width:'100%',padding:'9px 12px',borderRadius:9,border:'1.5px solid var(--brd)',background:'var(--inp)',color:'var(--txt)',fontSize:13,outline:'none',fontFamily:'inherit',WebkitAppearance:'none'};
+const oF=e=>{e.target.style.borderColor='#1a5c38';e.target.style.boxShadow='0 0 0 3px #1a5c3818';};
+const oB=e=>{e.target.style.borderColor='var(--brd)';e.target.style.boxShadow='none';};
+
+function Ic({n,z=18,c,sx={}}){
+  const s={width:z,height:z,color:c,display:'block',flexShrink:0,...sx};
+  const p={fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round'};
+  const icons={
+    dashboard:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>,
+    file:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+    gavel:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m14 13-8.5 8.5a2.12 2.12 0 0 1-3-3L11 10"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg>,
+    check_sq:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
+    building:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+    bell:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+    chart:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+    users:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+    log:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>,
+    rep:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+    plus:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+    search:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+    edit:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+    eye:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+    trash:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+    x:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+    check:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+    alert:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+    clock:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+    menu:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>,
+    chevL:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
+    chevR:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
+    moon:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
+    sun:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>,
+    filter:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
+    star:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+    starF:<svg style={{...s,fill:'#f59e0b',stroke:'#f59e0b'}} viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+    money:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    person:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+    msg:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+    ul:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+    folder:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>,
+    send:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+    coins:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/></svg>,
+    hist:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.49"/></svg>,
+    logout:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+    cam:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
+    clip:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>,
+    dl:<svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+  };
+  return icons[n]||null;
+}
+
+function Fld({label,req,children}){return <div style={{display:'flex',flexDirection:'column',gap:5}}><label style={{fontSize:10,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.06em'}}>{label}{req&&<span style={{color:'#ef4444',marginLeft:3}}>*</span>}</label>{children}</div>;}
+function Sb({v,list,sm}){const s=gT(list,v);return <span style={{color:s.bg||'#fff',background:s.cor,border:'1px solid '+s.cor,padding:sm?'1px 7px':'3px 9px',borderRadius:999,fontSize:10,fontWeight:700,whiteSpace:'nowrap',display:'inline-block',lineHeight:1.7}}>{s.l}</span>;}
+function Pb({v}){const p=gT(PRI,v);return <span style={{color:p.cor,background:p.bg,border:'1px solid '+p.cor+'44',padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:800,whiteSpace:'nowrap',display:'inline-block',lineHeight:1.7}}>{p.l}</span>;}
+function Card({children,style:sx={}}){return <div style={{background:'var(--card)',borderRadius:16,border:'1px solid var(--brd)',boxShadow:'0 1px 8px rgba(0,0,0,.05)',...sx}}>{children}</div>;}
+function SAv({id,size=30}){const s=gS(id);return <div style={{width:size,height:size,borderRadius:size*.28,background:s.cor,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:900,fontSize:size*.34,flexShrink:0}}>{s.sigla.slice(0,2)}</div>;}
+function IB({icon,color,title,onClick,sm}){const z=sm?28:32;return <button title={title} onClick={onClick} style={{width:z,height:z,borderRadius:8,border:'none',background:color+'14',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color,transition:'background .15s'}} onMouseEnter={e=>e.currentTarget.style.background=color+'28'} onMouseLeave={e=>e.currentTarget.style.background=color+'14'}><Ic n={icon} z={sm?13:15}/></button>;}
+function PB({onClick,color,children,outline,full,sm,disabled}){const col=color||G;const base={display:'flex',alignItems:'center',justifyContent:'center',gap:7,fontFamily:'inherit',fontWeight:800,fontSize:sm?11:13,cursor:disabled?'not-allowed':'pointer',opacity:disabled?.55:1,borderRadius:9,transition:'all .15s',border:'none',whiteSpace:'nowrap'};if(outline)return <button onClick={onClick} disabled={disabled} style={{...base,background:'transparent',border:'1.5px solid var(--brd)',color:'var(--muted)',padding:sm?'6px 11px':'10px 15px',width:full?'100%':undefined}}>{children}</button>;return <button onClick={onClick} disabled={disabled} style={{...base,background:col,color:'#fff',padding:sm?'6px 11px':'10px 16px',width:full?'100%':undefined,boxShadow:'0 2px 8px '+col+'44'}}>{children}</button>;}
+function Modal({title,onClose,children,wide}){
+  useEffect(()=>{
+    document.body.style.overflow='hidden';
+    const esc=e=>{if(e.key==='Escape')onClose();};
+    document.addEventListener('keydown',esc);
+    return()=>{document.body.style.overflow='';document.removeEventListener('keydown',esc);};
+  },[]);
+  const overlay={position:'fixed',top:0,left:0,width:'100vw',height:'100vh',zIndex:99999,background:'rgba(0,0,0,.75)',display:'flex',alignItems:'flex-start',justifyContent:'center',overflowY:'auto',padding:'40px 16px 60px',boxSizing:'border-box'};
+  const box={background:'var(--card)',borderRadius:18,width:'100%',maxWidth:wide?820:600,flexShrink:0,boxShadow:'0 24px 80px rgba(0,0,0,.5)',position:'relative',zIndex:1};
+  const cssVars=document.documentElement.style.cssText;
+  const modalRoot=document.getElementById('modal-root')||document.body;
+  return ReactDOM.createPortal(
+    <div style={overlay} onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div style={box}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--brd)',borderRadius:'18px 18px 0 0'}}>
+          <h2 style={{fontSize:16,fontWeight:900,color:'var(--txt)'}}>{title}</h2>
+          <button onClick={onClose} style={{width:32,height:32,borderRadius:9,border:'none',background:'var(--inp)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)'}}><Ic n="x" z={17}/></button>
+        </div>
+        <div style={{padding:'22px 22px 36px'}}>{children}</div>
+      </div>
+    </div>,
+    modalRoot
+  );
+}
+function Toast({msg,type,onDone}){useEffect(()=>{const t=setTimeout(onDone,3500);return()=>clearTimeout(t);},[]);const cols={success:G,error:'#dc2626',info:'#0369a1',warning:'#d97706'};return <div style={{position:'fixed',bottom:80,left:'50%',transform:'translateX(-50%)',zIndex:300,background:cols[type]||cols.info,color:'#fff',padding:'11px 20px',borderRadius:11,fontWeight:700,fontSize:12,boxShadow:'0 6px 24px rgba(0,0,0,.25)',animation:'fadeUp .3s ease',whiteSpace:'nowrap'}}>{msg}</div>;}
+function DropZone({onFiles}){const[drag,setDrag]=useState(false);const ref=useRef();return <div onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);onFiles(Array.from(e.dataTransfer.files));}} onClick={()=>ref.current.click()} style={{border:'2px dashed '+(drag?G:'var(--brd)'),borderRadius:12,padding:'22px 16px',textAlign:'center',background:drag?GB:'var(--inp)',cursor:'pointer',transition:'all .2s'}}><Ic n="ul" z={22} c={drag?G:'var(--muted)'} sx={{margin:'0 auto 8px'}}/><p style={{fontSize:13,fontWeight:700,color:drag?G:'var(--muted)'}}>Arraste arquivos ou clique para selecionar</p><p style={{fontSize:11,color:'var(--muted)',marginTop:4}}>PDF, Word, Excel, Imagens, ZIP</p><input ref={ref} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip" style={{display:'none'}} onChange={e=>onFiles(Array.from(e.target.files))}/></div>;}
+function ARow({a,onDelete}){
+  const ext=(a.nome||'').split('.').pop().toLowerCase();
+  const ico={pdf:'PDF',doc:'DOC',docx:'DOC',xls:'XLS',xlsx:'XLS',jpg:'IMG',jpeg:'IMG',png:'IMG',zip:'ZIP'}[ext]||'ARQ';
+  const cor={PDF:'#dc2626',DOC:'#2563eb',XLS:'#059669',IMG:'#1a3a6e',ZIP:'#d97706',ARQ:'#64748b'}[ico];
+  function download(){
+    if(a.dataUrl){
+      const link=document.createElement('a');
+      link.href=a.dataUrl;
+      link.download=a.nome;
+      link.click();
+    } else {
+      alert('Arquivo: '+a.nome+'\nTamanho: '+fKB(a.tamanho)+'\n\nPara baixar, o arquivo precisa ser anexado novamente nesta sessão.');
+    }
+  }
+  return <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',background:'var(--inp)',borderRadius:10,marginBottom:6}}>
+    <div style={{width:34,height:34,borderRadius:8,background:cor+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><span style={{fontSize:9,fontWeight:900,color:cor}}>{ico}</span></div>
+    <div style={{flex:1,minWidth:0}}>
+      <p style={{fontSize:12,fontWeight:700,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.nome}</p>
+      <p style={{fontSize:10,color:'var(--muted)'}}>{fKB(a.tamanho)} · {fD(a.data)}</p>
+    </div>
+    <IB icon="dl" color={G} title="Baixar" onClick={download} sm/>
+    <IB icon="trash" color="#dc2626" title="Excluir" onClick={()=>onDelete(a.id)} sm/>
+  </div>;
+}
+
+function OficioForm({initial,oficios,onSave,onClose}){
+  const nxt='OFF-'+new Date().getFullYear()+'-'+String(oficios.length+1).padStart(4,'0');
+  const[f,sf]=useState(initial||{numero:nxt,secretaria_id:1,responsavel:'',resp_acomp:'',data:td(),assunto:'',descricao:'',tipo:'Compra',prioridade:'media',prazo:'',status:'recebido',obs:'',favorito:false,historico:[],comentarios:[],anexos:[]});
+  const up=(k,v)=>sf(p=>({...p,[k]:v}));
+  function save(){if(!f.assunto.trim()){alert('Preencha o assunto.');return;}const h=[...(f.historico||[]),{data:td(),acao:!initial?'Cadastrado':'Atualizado',usuário:'Voce'}];onSave({...f,secretaria_id:Number(f.secretaria_id),id:f.id||uid(),historico:h});}
+  return <div style={{display:'flex',flexDirection:'column',gap:13}}>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+      <Fld label="Número" req><input style={IS} value={f.numero} readOnly={!!initial} onFocus={oF} onBlur={oB} onChange={e=>up('numero',e.target.value)}/></Fld>
+      <Fld label="Data"><input type="date" style={IS} value={f.data} onFocus={oF} onBlur={oB} onChange={e=>up('data',e.target.value)}/></Fld>
+    </div>
+    <Fld label="Secretaria" req><select style={IS} value={f.secretaria_id} onFocus={oF} onBlur={oB} onChange={e=>up('secretaria_id',e.target.value)}>{SECS.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}</select></Fld>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+      <Fld label="Responsável"><input style={IS} value={f.responsavel} onFocus={oF} onBlur={oB} onChange={e=>up('responsavel',e.target.value)}/></Fld>
+      <Fld label="Acompanhamento"><input style={IS} value={f.resp_acomp} onFocus={oF} onBlur={oB} onChange={e=>up('resp_acomp',e.target.value)}/></Fld>
+    </div>
+    <Fld label="Assunto" req><input style={IS} value={f.assunto} onFocus={oF} onBlur={oB} onChange={e=>up('assunto',e.target.value)}/></Fld>
+    <Fld label="Descrição"><textarea style={{...IS,resize:'none'}} rows={3} value={f.descricao} onFocus={oF} onBlur={oB} onChange={e=>up('descricao',e.target.value)}/></Fld>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
+      <Fld label="Tipo"><select style={IS} value={f.tipo} onFocus={oF} onBlur={oB} onChange={e=>up('tipo',e.target.value)}>{['Compra','Servico','Obra','Locacao','Outro'].map(t=><option key={t}>{t}</option>)}</select></Fld>
+      <Fld label="Prioridade"><select style={IS} value={f.prioridade} onFocus={oF} onBlur={oB} onChange={e=>up('prioridade',e.target.value)}>{PRI.map(p=><option key={p.v} value={p.v}>{p.l}</option>)}</select></Fld>
+      <Fld label="Status"><select style={IS} value={f.status} onFocus={oF} onBlur={oB} onChange={e=>up('status',e.target.value)}>{STO.map(s=><option key={s.v} value={s.v}>{s.l}</option>)}</select></Fld>
+    </div>
+    <Fld label="Prazo"><input type="date" style={IS} value={f.prazo} onFocus={oF} onBlur={oB} onChange={e=>up('prazo',e.target.value)}/></Fld>
+    <Fld label="Observações"><textarea style={{...IS,resize:'none'}} rows={2} value={f.obs} onFocus={oF} onBlur={oB} onChange={e=>up('obs',e.target.value)}/></Fld>
+    <div style={{border:'1px solid var(--brd)',borderRadius:12,padding:'12px 14px'}}>
+      <p style={{fontSize:10,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',marginBottom:10}}>Documentos Anexados</p>
+      <div style={{background:GB,border:'1.5px solid '+GD,borderRadius:10,padding:'10px 13px',display:'flex',alignItems:'center',gap:9,marginBottom:10}}><Ic n="folder" z={15} c={G}/><p style={{fontSize:11,fontWeight:700,color:G}}>Pasta: {f.secretaria_id?gS(Number(f.secretaria_id)).nome:'Secretaria'} / {f.numero}</p></div>
+      <DropZone onFiles={files=>{const reads=files.map(fl=>new Promise(res=>{const r=new FileReader();r.onload=e=>res({id:uid(),nome:fl.name,tamanho:fl.size,data:td(),dataUrl:e.target.result});r.readAsDataURL(fl);}));Promise.all(reads).then(n=>up('anexos',[...(f.anexos||[]),...n]));}}/>
+      {(f.anexos||[]).map(a=><ARow key={a.id} a={a} onDelete={id=>up('anexos',(f.anexos||[]).filter(x=>x.id!==id))}/>)}
+    </div>
+    <div style={{display:'flex',gap:10}}><PB onClick={save} full>{!initial?'Cadastrar':'Salvar'}</PB><PB onClick={onClose} outline>Cancelar</PB></div>
+  </div>;
+}
+
+function PesquisaForm({initial,oficios,pesquisas,onSave,onClose}){
+  const hoje=new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0');
+  const nxt='PQ-'+new Date().getFullYear()+'-'+String(pesquisas.length+1).padStart(4,'0');
+  const[f,sf]=useState(initial||{numero:nxt,secretaria_id:1,objeto:'',descricao:'',oficio_ref:'',periodo:hoje,prazo_cotacao:'',responsavel:'',status:'aguardando',obs:'',fornecedores:[{id:uid(),nome:'',cnpj:'',contato:'',valor:'',obs:'',arquivos:[]}],anexos:[]});
+  const up=(k,v)=>sf(p=>({...p,[k]:v}));
+  const addForn=()=>up('fornecedores',[...f.fornecedores,{id:uid(),nome:'',cnpj:'',contato:'',valor:'',obs:'',arquivos:[]}]);
+  const upForn=(id,k,v)=>up('fornecedores',f.fornecedores.map(x=>x.id===id?{...x,[k]:v}:x));
+  const delForn=id=>up('fornecedores',f.fornecedores.filter(x=>x.id!==id));
+  const vals=f.fornecedores.map(x=>Number(x.valor||0)).filter(v=>v>0);
+  const menorV=vals.length>0?Math.min(...vals):0;
+  function save(){if(!f.objeto.trim()){alert('Preencha o objeto.');return;}onSave({...f,secretaria_id:Number(f.secretaria_id),id:f.id||uid()});}
+  return <div style={{display:'flex',flexDirection:'column',gap:14}}>
+    <div style={{background:GB,border:'1.5px solid '+GD,borderRadius:12,padding:'12px 14px'}}>
+      <p style={{fontSize:10,fontWeight:800,color:G,textTransform:'uppercase',marginBottom:10}}>Identificação</p>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
+        <Fld label="Número"><input style={IS} value={f.numero} readOnly={!!initial} onFocus={oF} onBlur={oB} onChange={e=>up('numero',e.target.value)}/></Fld>
+        <Fld label="Secretaria" req><select style={IS} value={f.secretaria_id} onFocus={oF} onBlur={oB} onChange={e=>up('secretaria_id',e.target.value)}>{SECS.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}</select></Fld>
+        <Fld label="Período"><select style={IS} value={f.periodo} onFocus={oF} onBlur={oB} onChange={e=>up('periodo',e.target.value)}>{MESES.map(m=><option key={m} value={m}>{fmtM(m)}</option>)}</select></Fld>
+      </div>
+    </div>
+    <div style={{border:'1px solid var(--brd)',borderRadius:12,padding:'12px 14px'}}>
+      <p style={{fontSize:10,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',marginBottom:10}}>Objeto</p>
+      <Fld label="Objeto / Descrição" req><input style={IS} value={f.objeto} placeholder="Ex: Paracetamol 500mg 1000 comprimidos" onFocus={oF} onBlur={oB} onChange={e=>up('objeto',e.target.value)}/></Fld>
+      <div style={{marginTop:10}}><Fld label="Especificações Técnicas"><textarea style={{...IS,resize:'none'}} rows={3} value={f.descricao} placeholder="Quantidades, unidades, especificações..." onFocus={oF} onBlur={oB} onChange={e=>up('descricao',e.target.value)}/></Fld></div>
+    </div>
+    <div style={{border:'1px solid var(--brd)',borderRadius:12,padding:'12px 14px'}}>
+      <p style={{fontSize:10,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',marginBottom:10}}>Vínculo e Controle</p>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
+        <Fld label="Ofício de Referência"><select style={IS} value={f.oficio_ref} onFocus={oF} onBlur={oB} onChange={e=>up('oficio_ref',e.target.value)}><option value="">Sem vínculo</option>{oficios.map(o=><option key={o.id} value={o.numero}>{o.numero} - {o.assunto.slice(0,30)}</option>)}</select></Fld>
+        <Fld label="Prazo para Cotação"><input type="date" style={IS} value={f.prazo_cotacao} onFocus={oF} onBlur={oB} onChange={e=>up('prazo_cotacao',e.target.value)}/></Fld>
+        <Fld label="Responsável"><input style={IS} value={f.responsavel} onFocus={oF} onBlur={oB} onChange={e=>up('responsavel',e.target.value)}/></Fld>
+      </div>
+    </div>
+    <div style={{border:'1px solid var(--brd)',borderRadius:12,padding:'12px 14px'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+        <p style={{fontSize:10,fontWeight:800,color:'var(--muted)',textTransform:'uppercase'}}>Fornecedores e Cotações</p>
+        <button onClick={addForn} style={{display:'flex',alignItems:'center',gap:6,fontSize:11,fontWeight:700,color:G,background:GB,border:'1px solid '+GD,padding:'5px 10px',borderRadius:7,cursor:'pointer',fontFamily:'inherit'}}><Ic n="plus" z={12} c={G}/>Adicionar</button>
+      </div>
+      {f.fornecedores.map((forn,idx)=>{
+        const isMin=Number(forn.valor||0)===menorV&&menorV>0;
+        return <div key={forn.id} style={{background:'var(--inp)',borderRadius:10,padding:'12px 13px',marginBottom:8,border:'1.5px solid '+(isMin?'#86efac':'var(--brd)')}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:9}}>
+            <p style={{fontSize:11,fontWeight:800,color:'var(--txt)'}}>Fornecedor {idx+1}{isMin&&<span style={{marginLeft:8,fontSize:9,background:G,color:'#fff',padding:'1px 7px',borderRadius:999}}>MENOR PRECO</span>}</p>
+            {f.fornecedores.length>1&&<IB icon="trash" color="#dc2626" onClick={()=>delForn(forn.id)} sm/>}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:9,marginBottom:9}}>
+            <Fld label="Razão Social"><input style={IS} value={forn.nome} placeholder="Nome do fornecedor" onFocus={oF} onBlur={oB} onChange={e=>upForn(forn.id,'nome',e.target.value)}/></Fld>
+            <Fld label="CNPJ"><input style={IS} value={forn.cnpj} placeholder="00.000.000/0001-00" onFocus={oF} onBlur={oB} onChange={e=>upForn(forn.id,'cnpj',e.target.value)}/></Fld>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:9}}>
+            <Fld label="E-mail"><input style={IS} value={forn.email||''} placeholder="contato@empresa.com.br" type="email" onFocus={oF} onBlur={oB} onChange={e=>upForn(forn.id,'email',e.target.value)}/></Fld>
+            <Fld label="Telefone"><input style={IS} value={forn.telefone||''} placeholder="(00) 00000-0000" onFocus={oF} onBlur={oB} onChange={e=>upForn(forn.id,'telefone',e.target.value)}/></Fld>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:9,marginBottom:9}}>
+            <Fld label="Obs. Rápida"><input style={IS} value={forn.obs} placeholder="Condições, prazo de entrega..." onFocus={oF} onBlur={oB} onChange={e=>upForn(forn.id,'obs',e.target.value)}/></Fld>
+            <Fld label="Valor Cotado (R$)"><input style={{...IS,fontWeight:isMin?800:400,color:isMin?'#059669':'var(--txt)'}} type="number" step="0.01" value={forn.valor} placeholder="0,00" onFocus={oF} onBlur={oB} onChange={e=>upForn(forn.id,'valor',e.target.value)}/></Fld>
+          </div>
+          <div style={{marginTop:10}}>
+            <p style={{fontSize:9,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:6}}>📎 Orçamento / Proposta do Fornecedor</p>
+            {(forn.arquivos||[]).map((arq,ai)=>(
+              <div key={arq.id||ai} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',background:'var(--inp)',border:'1px solid var(--brd)',borderRadius:8,marginBottom:5}}>
+                <div style={{width:30,height:30,borderRadius:6,background:'#dc262618',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><span style={{fontSize:8,fontWeight:900,color:'#dc2626'}}>{(arq.nome||'').split('.').pop().toUpperCase().slice(0,4)}</span></div>
+                <div style={{flex:1,minWidth:0}}><p style={{fontSize:11,fontWeight:700,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{arq.nome}</p><p style={{fontSize:9,color:'var(--muted)'}}>{fKB(arq.tamanho)}</p></div>
+                {arq.dataUrl&&<button onClick={()=>{try{const b64=arq.dataUrl.split(',')[1];const bytes=atob(b64);const arr=new Uint8Array(bytes.length);for(let i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i);const mime=arq.nome.toLowerCase().endsWith('.pdf')?'application/pdf':arq.dataUrl.split(';')[0].split(':')[1]||'application/octet-stream';const blob=new Blob([arr],{type:mime});const url=URL.createObjectURL(blob);window.open(url,'_blank');}catch(e){alert('Não foi possível abrir o arquivo.');}}} style={{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',background:NAVY,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontFamily:'inherit',fontSize:10,fontWeight:700,flexShrink:0,whiteSpace:'nowrap'}}><Ic n="eye" z={11} c="#fff"/>Ver</button>}
+                {arq.dataUrl&&<button onClick={()=>{const a=document.createElement('a');a.href=arq.dataUrl;a.download=arq.nome;a.click();}} style={{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',background:'#059669',color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontFamily:'inherit',fontSize:10,fontWeight:700,flexShrink:0,whiteSpace:'nowrap'}}><Ic n="dl" z={11} c="#fff"/>Baixar</button>}
+                <IB icon="trash" color="#dc2626" onClick={()=>upForn(forn.id,'arquivos',(forn.arquivos||[]).filter((_,j)=>j!==ai))} sm/>
+              </div>
+            ))}
+            <label style={{display:'flex',alignItems:'center',gap:7,padding:'7px 12px',background:GB,border:'1.5px dashed '+GD,borderRadius:8,cursor:'pointer',fontSize:11,fontWeight:700,color:G,width:'fit-content'}}>
+              <Ic n="ul" z={14} c={G}/>Anexar orçamento
+              <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" style={{display:'none'}} onChange={e=>{const files=Array.from(e.target.files);if(!files.length)return;const reads=files.map(fl=>new Promise(res=>{const r=new FileReader();r.onload=ev=>res({id:uid(),nome:fl.name,tamanho:fl.size,data:td(),dataUrl:ev.target.result});r.readAsDataURL(fl);}));Promise.all(reads).then(novos=>upForn(forn.id,'arquivos',[...(forn.arquivos||[]),...novos]));e.target.value='';}}/>
+            </label>
+          </div>
+        </div>;
+      })}
+      {menorV>0&&<div style={{background:'#f0fdf4',border:'1.5px solid #86efac',borderRadius:10,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:4}}><span style={{fontSize:11,fontWeight:700,color:'#065f46'}}>Menor Valor:</span><span style={{fontSize:14,fontWeight:900,color:'#059669'}}>{fR(menorV)}</span></div>}
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+      <Fld label="Status"><select style={IS} value={f.status} onFocus={oF} onBlur={oB} onChange={e=>up('status',e.target.value)}>{SPQ.map(s=><option key={s.v} value={s.v}>{s.l}</option>)}</select></Fld>
+      <Fld label="Observações Gerais"><input style={IS} value={f.obs} onFocus={oF} onBlur={oB} onChange={e=>up('obs',e.target.value)}/></Fld>
+    </div>
+    <div style={{display:'flex',gap:10}}><PB onClick={save} full>{!initial?'Cadastrar Pesquisa':'Salvar Alterações'}</PB><PB onClick={onClose} outline>Cancelar</PB></div>
+  </div>;
+}
+
+function OficioDetail({o,setOficios,onClose,onEdit}){
+  const[tab,setTab]=useState('info');
+  const[comment,setCom]=useState('');
+  const[coms,setComs]=useState(o.comentarios||[]);
+  const[anx,setAnx]=useState(o.anexos||[]);
+  const sec=gS(o.secretaria_id);
+  function sendC(){if(!comment.trim())return;const n={texto:comment,data:td(),usuário:'Voce'};setComs(p=>[...p,n]);setOficios(prev=>prev.map(x=>x.id===o.id?{...x,comentarios:[...(x.comentarios||[]),n]}:x));setCom('');}
+  function addFiles(files){const reads=files.map(fl=>new Promise(res=>{const r=new FileReader();r.onload=e=>res({id:uid(),nome:fl.name,tamanho:fl.size,data:td(),dataUrl:e.target.result});r.readAsDataURL(fl);}));Promise.all(reads).then(n=>{setAnx(p=>[...p,...n]);setOficios(prev=>prev.map(x=>x.id===o.id?{...x,anexos:[...(x.anexos||[]),...n]}:x));});}
+  function delA(id){setAnx(p=>p.filter(a=>a.id!==id));setOficios(prev=>prev.map(x=>x.id===o.id?{...x,anexos:(x.anexos||[]).filter(a=>a.id!==id)}:x));}
+  const TABS=[{id:'info',l:'Detalhes',n:'file'},{id:'anexos',l:'Docs ('+anx.length+')',n:'clip'},{id:'hist',l:'Timeline',n:'hist'},{id:'chat',l:'Chat ('+coms.length+')',n:'msg'}];
+  const over=isOv(o.prazo)&&!['concluido','arquivado'].includes(o.status);
+  return <div style={{display:'flex',flexDirection:'column',gap:14}}>
+    <div style={{display:'flex',alignItems:'flex-start',gap:12}}><SAv id={o.secretaria_id} size={44}/><div style={{flex:1}}><span style={{fontFamily:'monospace',fontWeight:900,color:G,fontSize:12}}>{o.numero}</span><p style={{fontSize:14,fontWeight:800,color:'var(--txt)',lineHeight:1.3}}>{o.assunto}</p><p style={{fontSize:11,color:'var(--muted)'}}>{sec.nome}</p></div></div>
+    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}><Pb v={o.prioridade}/><Sb v={o.status} list={STO}/></div>
+    <div style={{display:'flex',borderBottom:'1px solid var(--brd)'}}>{TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:'9px 4px',fontSize:10,fontWeight:700,border:'none',background:'transparent',cursor:'pointer',fontFamily:'inherit',color:tab===t.id?G:'var(--muted)',borderBottom:tab===t.id?'2px solid '+G:'2px solid transparent',marginBottom:-1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}><Ic n={t.n} z={13} c={tab===t.id?G:undefined}/>{t.l}</button>)}</div>
+    {tab==='info'&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7}}>{[['Tipo',o.tipo],['Responsável',o.responsavel||'--'],['Data',fD(o.data)],['Prazo',o.prazo?fD(o.prazo):'--'],['Acomp.',o.resp_acomp||'--'],['Secretaria',sec.sigla]].map(([k,v])=><div key={k} style={{background:'var(--inp)',borderRadius:9,padding:'9px 11px'}}><p style={{fontSize:9,color:'var(--muted)',fontWeight:800,textTransform:'uppercase',marginBottom:3}}>{k}</p><p style={{fontSize:12,fontWeight:700,color:over&&k==='Prazo'?'#dc2626':'var(--txt)'}}>{v}</p></div>)}</div>}
+    {tab==='anexos'&&<div style={{display:'flex',flexDirection:'column',gap:10}}><div style={{background:GB,border:'1.5px solid '+GD,borderRadius:10,padding:'10px 13px',display:'flex',alignItems:'center',gap:9}}><Ic n="folder" z={15} c={G}/><div><p style={{fontSize:11,fontWeight:700,color:G}}>Pasta: {sec.nome} / {o.numero}</p></div></div><DropZone onFiles={addFiles}/>{anx.length===0&&<p style={{textAlign:'center',color:'var(--muted)',fontSize:12,padding:16}}>Nenhum documento.</p>}{anx.map(a=><ARow key={a.id} a={a} onDelete={delA}/>)}</div>}
+    {tab==='hist'&&<div>{(o.historico||[]).slice().reverse().map((h,i)=><div key={i} style={{display:'flex',gap:10,marginBottom:10}}><div style={{width:8,height:8,borderRadius:'50%',background:G,flexShrink:0,marginTop:6}}/><div style={{flex:1,background:'var(--inp)',borderRadius:8,padding:'8px 11px'}}><p style={{fontSize:12,fontWeight:700,color:'var(--txt)'}}>{h.acao}</p><p style={{fontSize:10,color:'var(--muted)'}}>{fD(h.data)} - {h.usuário}</p></div></div>)}</div>}
+    {tab==='chat'&&<div><div style={{maxHeight:180,overflowY:'auto',display:'flex',flexDirection:'column',gap:8,marginBottom:12}}>{coms.length===0&&<p style={{textAlign:'center',color:'var(--muted)',fontSize:12,padding:16}}>Sem comentários.</p>}{coms.map((c,i)=><div key={i} style={{background:'var(--inp)',borderRadius:9,padding:'9px 11px'}}><div style={{display:'flex',alignItems:'center',gap:7,marginBottom:4}}><div style={{width:20,height:20,borderRadius:6,background:G+'20',display:'flex',alignItems:'center',justifyContent:'center',color:G,fontWeight:900,fontSize:10}}>{c.usuário.charAt(0)}</div><span style={{fontSize:11,fontWeight:700,color:'var(--txt)'}}>{c.usuário}</span><span style={{fontSize:10,color:'var(--muted)',marginLeft:'auto'}}>{fD(c.data)}</span></div><p style={{fontSize:12,color:'var(--txt)'}}>{c.texto}</p></div>)}</div><div style={{display:'flex',gap:8}}><input style={{...IS,flex:1}} placeholder="Comentario..." value={comment} onChange={e=>setCom(e.target.value)} onFocus={oF} onBlur={oB} onKeyDown={e=>e.key==='Enter'&&sendC()}/><PB onClick={sendC} sm><Ic n="send" z={13}/>Enviar</PB></div></div>}
+    <div style={{display:'flex',gap:10,paddingTop:4}}><PB onClick={()=>onEdit(o)} full><Ic n="edit" z={14}/>Editar</PB><PB onClick={onClose} outline>Fechar</PB></div>
+  </div>;
+}
+
+function PesquisaDetail({pq,setPesquisas,onClose,onEdit}){
+  const[tab,setTab]=useState('info');
+  const[anx,setAnx]=useState(pq.anexos||[]);
+  const sec=gS(pq.secretaria_id);
+  const st=gT(SPQ,pq.status);
+  const vals=(pq.fornecedores||[]).map(x=>Number(x.valor||0)).filter(v=>v>0);
+  const menorV=vals.length>0?Math.min(...vals):0;
+  const maiorV=vals.length>0?Math.max(...vals):0;
+  const venc=(pq.fornecedores||[]).find(forn=>Number(forn.valor||0)===menorV&&menorV>0);
+  function addFiles(files){const reads=files.map(fl=>new Promise(res=>{const r=new FileReader();r.onload=e=>res({id:uid(),nome:fl.name,tamanho:fl.size,data:td(),dataUrl:e.target.result});r.readAsDataURL(fl);}));Promise.all(reads).then(n=>{setAnx(p=>[...p,...n]);setPesquisas(prev=>prev.map(x=>x.id===pq.id?{...x,anexos:[...(x.anexos||[]),...n]}:x));});}
+  function delA(id){setAnx(p=>p.filter(a=>a.id!==id));setPesquisas(prev=>prev.map(x=>x.id===pq.id?{...x,anexos:(x.anexos||[]).filter(a=>a.id!==id)}:x));}
+  const TABS=[{id:'info',l:'Detalhes',n:'file'},{id:'cot',l:'Cotações ('+(pq.fornecedores||[]).length+')',n:'coins'},{id:'docs',l:'Docs ('+anx.length+')',n:'clip'}];
+  return <div style={{display:'flex',flexDirection:'column',gap:14}}>
+    <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
+      <div style={{width:44,height:44,borderRadius:12,background:sec.cor,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:900,fontSize:12,flexShrink:0}}>{sec.sigla.slice(0,2)}</div>
+      <div style={{flex:1}}><div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><span style={{fontFamily:'monospace',fontWeight:900,color:G,fontSize:12}}>{pq.numero}</span>{pq.oficio_ref&&<span style={{fontSize:10,color:'#0369a1',background:'#eff6ff',border:'1px solid #bfdbfe',padding:'1px 7px',borderRadius:999,fontWeight:600,fontFamily:'monospace'}}>{pq.oficio_ref}</span>}</div><p style={{fontSize:14,fontWeight:800,color:'var(--txt)',lineHeight:1.3}}>{pq.objeto}</p><p style={{fontSize:11,color:'var(--muted)'}}>{sec.nome} - {fmtM(pq.periodo)}</p></div>
+    </div>
+    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}><span style={{color:st.bg,background:st.cor,border:'1px solid '+st.cor,padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:700}}>{st.l}</span>{menorV>0&&<span style={{color:'#059669',background:'#f0fdf4',border:'1px solid #86efac',padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:800}}>Menor: {fR(menorV)}</span>}</div>
+    <div style={{display:'flex',borderBottom:'1px solid var(--brd)'}}>{TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:'9px 4px',fontSize:10,fontWeight:700,border:'none',background:'transparent',cursor:'pointer',fontFamily:'inherit',color:tab===t.id?G:'var(--muted)',borderBottom:tab===t.id?'2px solid '+G:'2px solid transparent',marginBottom:-1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}><Ic n={t.n} z={13} c={tab===t.id?G:undefined}/>{t.l}</button>)}</div>
+    {tab==='info'&&<div style={{display:'flex',flexDirection:'column',gap:9}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7}}>{[['Secretaria',sec.nome],['Responsável',pq.responsavel||'--'],['Período',fmtM(pq.periodo)],['Prazo Cotação',pq.prazo_cotacao?fD(pq.prazo_cotacao):'--'],['Ofício Ref.',pq.oficio_ref||'--'],['Fornecedores',(pq.fornecedores||[]).length+' empresa(s)']].map(([k,v])=><div key={k} style={{background:'var(--inp)',borderRadius:9,padding:'9px 11px'}}><p style={{fontSize:9,color:'var(--muted)',fontWeight:800,textTransform:'uppercase',marginBottom:3}}>{k}</p><p style={{fontSize:12,fontWeight:700,color:'var(--txt)'}}>{v}</p></div>)}</div>
+      {pq.descricao&&<div style={{background:'var(--inp)',borderRadius:9,padding:'9px 11px'}}><p style={{fontSize:9,color:'var(--muted)',fontWeight:800,textTransform:'uppercase',marginBottom:3}}>Especificações</p><p style={{fontSize:12,color:'var(--txt)',lineHeight:1.6}}>{pq.descricao}</p></div>}
+      {venc&&<div style={{background:'#f0fdf4',border:'1.5px solid #86efac',borderRadius:10,padding:'11px 13px'}}><p style={{fontSize:10,color:'#059669',fontWeight:800,textTransform:'uppercase',marginBottom:6}}>Fornecedor com Menor Preço</p><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}><div><p style={{fontSize:13,fontWeight:800,color:'#065f46'}}>{venc.nome||'--'}</p>{venc.cnpj&&<p style={{fontSize:11,color:'#059669'}}>CNPJ: {venc.cnpj}</p>}</div><p style={{fontSize:18,fontWeight:900,color:'#059669'}}>{fR(venc.valor)}</p></div></div>}
+    </div>}
+    {tab==='cot'&&<div style={{display:'flex',flexDirection:'column',gap:8}}>
+      {(pq.fornecedores||[]).map((forn,i)=>{
+        const isMin=Number(forn.valor||0)===menorV&&menorV>0;
+        return <div key={forn.id} style={{background:isMin?'#f0fdf4':'var(--inp)',border:isMin?'1.5px solid #86efac':'1px solid var(--brd)',borderRadius:11,padding:'12px 14px'}}>
+          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10}}>
+            <div style={{flex:1}}><div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><p style={{fontSize:13,fontWeight:800,color:'var(--txt)'}}>{forn.nome||'Fornecedor '+(i+1)}</p>{isMin&&<span style={{fontSize:9,background:G,color:'#fff',padding:'1px 7px',borderRadius:999,fontWeight:800}}>MENOR PRECO</span>}</div>{forn.cnpj&&<p style={{fontSize:10,color:'var(--muted)',marginTop:2}}>{forn.cnpj}</p>}{forn.contato&&<p style={{fontSize:10,color:'var(--muted)'}}>{forn.contato}</p>}{forn.obs&&<p style={{fontSize:11,color:'var(--txt)',marginTop:4}}>{forn.obs}</p>}</div>
+            <div style={{textAlign:'right',flexShrink:0}}><p style={{fontSize:16,fontWeight:900,color:isMin?'#059669':'var(--txt)'}}>{forn.valor?fR(forn.valor):'Aguardando'}</p>{!isMin&&Number(forn.valor||0)>0&&menorV>0&&<p style={{fontSize:9,color:'#dc2626',marginTop:2}}>+{fR(Number(forn.valor)-menorV)}</p>}</div>
+          </div>
+        </div>;
+      })}
+      {vals.length>1&&<div style={{background:GB,border:'1.5px solid '+GD,borderRadius:10,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}><span style={{fontSize:11,fontWeight:700,color:G}}>Economia (menor vs maior):</span><span style={{fontSize:13,fontWeight:900,color:G}}>{fR(maiorV-menorV)}</span></div>}
+    </div>}
+    {tab==='docs'&&<div style={{display:'flex',flexDirection:'column',gap:10}}>
+      <div style={{background:GB,border:'1.5px solid '+GD,borderRadius:10,padding:'10px 13px',display:'flex',alignItems:'center',gap:9}}><Ic n="folder" z={15} c={G}/><p style={{fontSize:11,fontWeight:700,color:G}}>Pasta: {sec.nome} / Pesquisas / {pq.numero}</p></div>
+      <DropZone onFiles={addFiles}/>
+      {anx.length===0?<p style={{fontSize:12,color:'var(--muted)',textAlign:'center',padding:16}}>Nenhum documento.</p>:anx.map(a=><ARow key={a.id} a={a} onDelete={delA}/>)}
+    </div>}
+    <div style={{display:'flex',gap:10,paddingTop:4}}><PB onClick={onEdit} full><Ic n="edit" z={14}/>Editar Pesquisa</PB><PB onClick={onClose} outline>Fechar</PB></div>
+  </div>;
+}
+
+function useClock(){const[now,setNow]=useState(new Date());useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);return now;}
+function ClockBar(){const now=useClock();const dias=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sabado'];const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];const dia=dias[now.getDay()];const data=now.getDate()+' de '+meses[now.getMonth()]+' de '+now.getFullYear();const hora=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});return <div style={{background:'linear-gradient(135deg,#0d3d22,#1a5c38)',borderRadius:14,padding:'12px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10,marginBottom:4}}><div style={{display:'flex',alignItems:'center',gap:12}}><Ic n="clock" z={22} c="rgba(255,255,255,.8)"/><div><p style={{fontSize:11,color:'rgba(255,255,255,.7)',fontWeight:600}}>{dia}</p><p style={{fontSize:14,fontWeight:900,color:'#fff'}}>{data}</p></div></div><div style={{textAlign:'right'}}><p style={{fontSize:28,fontWeight:900,color:'#fff',fontFamily:'monospace',lineHeight:1}}>{hora}</p><p style={{fontSize:10,color:'rgba(255,255,255,.6)',marginTop:2}}>Horário de Brasília</p></div></div>;}
+function Dashboard({oficios,processos,pesquisas}){
+  const mob=useMob();
+  const at=oficios.filter(o=>isOv(o.prazo)&&!['concluido','arquivado'].includes(o.status));
+  const venc=oficios.filter(o=>isSn(o.prazo)&&!['concluido','arquivado'].includes(o.status));
+
+  const cards=[
+    {l:'Total de Ofícios',v:oficios.length,g:'#1a5c38,#2d8f5e',i:'file'},
+    {l:'Pendentes',v:oficios.filter(o=>o.status==='pendente').length,g:'#a07800,#c9a227',i:'alert'},
+    {l:'Concluídos',v:oficios.filter(o=>o.status==='concluido').length,g:'#0d3d22,#1a5c38',i:'check'},
+    {l:'Processos',v:processos.length,g:'#0d2a4a,#1a3a6e',i:'gavel'},
+    {l:'Pesquisas de Preço',v:pesquisas.length,g:'#1a5c38,#22744a',i:'check_sq'},
+    {l:'Atrasados',v:at.length,g:'#7a5a00,#c9a227',i:'clock'},
+  ];
+  const bySec=SECS.map(s=>({...s,n:oficios.filter(o=>o.secretaria_id===s.id).length})).sort((a,b)=>b.n-a.n);
+  const mx=Math.max(...bySec.map(s=>s.n),1);
+  return <div style={{display:'flex',flexDirection:'column',gap:18}}>
+    <ClockBar/>
+    <div style={{display:'grid',gridTemplateColumns:mob?'1fr 1fr':'repeat(6,1fr)',gap:12}}>
+      {cards.map((c,i)=><div key={i} style={{background:'linear-gradient(135deg,'+c.g+')',borderRadius:16,padding:16,color:'#fff',boxShadow:'0 4px 16px rgba(0,0,0,.15)',animation:'fadeUp .4s ease '+(i*.06)+'s both'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}><Ic n={c.i} z={20} c="rgba(255,255,255,.85)"/><span style={{fontSize:26,fontWeight:900,lineHeight:1}}>{c.v}</span></div>
+        <p style={{fontSize:11,fontWeight:700,opacity:.9}}>{c.l}</p>
+      </div>)}
+    </div>
+
+    {(at.length>0||venc.length>0)&&<div style={{display:'grid',gridTemplateColumns:mob?'1fr':'1fr 1fr',gap:14}}>
+      {at.length>0&&<div style={{background:'#fef2f2',border:'1.5px solid #fecaca',borderRadius:14,padding:16}}>
+        <p style={{fontSize:12,fontWeight:800,color:'#dc2626',marginBottom:10,display:'flex',alignItems:'center',gap:6}}><Ic n="alert" z={14} c="#dc2626"/>Atrasados ({at.length})</p>
+        {at.slice(0,4).map(o=><div key={o.id} style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid #fee2e2'}}><span style={{fontSize:11,fontWeight:700,color:'#991b1b',fontFamily:'monospace'}}>{o.numero}</span><span style={{fontSize:10,color:'#b91c1c'}}>{fD(o.prazo)}</span></div>)}
+      </div>}
+      {venc.length>0&&<div style={{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:14,padding:16}}>
+        <p style={{fontSize:12,fontWeight:800,color:'#d97706',marginBottom:10,display:'flex',alignItems:'center',gap:6}}><Ic n="clock" z={14} c="#d97706"/>Vencendo ({venc.length})</p>
+        {venc.slice(0,4).map(o=><div key={o.id} style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid #fef3c7'}}><span style={{fontSize:11,fontWeight:700,color:'#92400e',fontFamily:'monospace'}}>{o.numero}</span><span style={{fontSize:10,color:'#b45309'}}>{fD(o.prazo)}</span></div>)}
+      </div>}
+    </div>}
+    <div style={{display:'grid',gridTemplateColumns:mob?'1fr':'1fr 1fr',gap:14}}>
+      <Card style={{padding:18}}>
+        <p style={{fontSize:13,fontWeight:800,color:'var(--txt)',marginBottom:14,display:'flex',alignItems:'center',gap:8}}><Ic n="chart" z={16} c={G}/>Ofícios por Secretaria</p>
+        {bySec.map(s=><div key={s.id} style={{marginBottom:10}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}><span style={{fontSize:10,fontWeight:700,color:'var(--muted)'}}>{s.sigla}</span><span style={{fontSize:10,fontWeight:800,color:s.cor}}>{s.n}</span></div>
+          <div style={{height:5,background:'var(--brd)',borderRadius:99,overflow:'hidden'}}><div style={{height:'100%',width:(s.n/mx*100)+'%',background:s.cor,borderRadius:99,transition:'width .6s ease'}}/></div>
+        </div>)}
+      </Card>
+      <Card style={{padding:18}}>
+        <p style={{fontSize:13,fontWeight:800,color:'var(--txt)',marginBottom:14,display:'flex',alignItems:'center',gap:8}}><Ic n="hist" z={16} c={G}/>Últimas Movimentações</p>
+        {[...oficios].reverse().slice(0,6).map(o=>{const s=gS(o.secretaria_id);return <div key={o.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:'1px solid var(--brd)'}}><div style={{width:7,height:7,borderRadius:'50%',background:s.cor,flexShrink:0}}/><div style={{flex:1,minWidth:0}}><p style={{fontSize:11,fontWeight:700,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{o.numero} - {o.assunto}</p><p style={{fontSize:10,color:'var(--muted)'}}>{s.sigla} - {fD(o.data)}</p></div><Sb v={o.status} list={STO} sm/></div>;})}
+      </Card>
+    </div>
+  </div>;
+}
+
+function OficiosPage({oficios,setOficios,addLog,toast}){
+  const mob=useMob();
+  const[modal,setModal]=useState(null);const[sel,setSel]=useState(null);
+  const[detProc,setDetProc]=useState(null);
+  const[q,setQ]=useState('');const[fSec,setFSec]=useState('');const[fSt,setFSt]=useState('');
+  const filtered=oficios.filter(o=>{const sq=q.toLowerCase();return(!q||o.numero.toLowerCase().includes(sq)||o.assunto.toLowerCase().includes(sq))&&(!fSec||o.secretaria_id===Number(fSec))&&(!fSt||o.status===fSt);});
+  function save(data){setOficios(p=>{const e=p.find(o=>o.id===data.id);return e?p.map(o=>o.id===data.id?data:o):[data,...p];});addLog((modal==='new'?'Criou ':'Atualizou ')+data.numero,'Ofícios',modal==='new'?'create':'update');toast(modal==='new'?'Cadastrado!':'Atualizado!','success');setModal(null);setSel(null);}
+  function del(id){if(!confirm('Excluir?'))return;setOficios(p=>p.filter(x=>x.id!==id));toast('Excluído.','info');}
+  const th={padding:'10px 14px',textAlign:'left',fontSize:9,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.06em',whiteSpace:'nowrap'};
+  return <div style={{display:'flex',flexDirection:'column',gap:14}}>
+    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+      <div style={{flex:1,minWidth:180,position:'relative'}}><div style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)',color:'var(--muted)',pointerEvents:'none'}}><Ic n="search" z={15}/></div><input style={{...IS,paddingLeft:35}} placeholder="Buscar número, assunto..." value={q} onChange={e=>setQ(e.target.value)} onFocus={oF} onBlur={oB}/></div>
+      <select style={{...IS,width:140,fontSize:12,padding:'9px 10px'}} value={fSec} onChange={e=>setFSec(e.target.value)}><option value="">Secretarias</option>{SECS.map(s=><option key={s.id} value={s.id}>{s.sigla}</option>)}</select>
+      <select style={{...IS,width:140,fontSize:12,padding:'9px 10px'}} value={fSt} onChange={e=>setFSt(e.target.value)}><option value="">Status</option>{STO.map(s=><option key={s.v} value={s.v}>{s.l}</option>)}</select>
+      <button onClick={()=>{setSel(null);setModal('new');}} style={{display:'flex',alignItems:'center',gap:7,background:G,color:'#fff',fontWeight:800,padding:'9px 15px',borderRadius:9,border:'none',cursor:'pointer',fontSize:13,fontFamily:'inherit',whiteSpace:'nowrap'}}><Ic n="plus" z={15} c="#fff"/>{!mob&&'Novo Ofício'}</button>
+    </div>
+    <p style={{fontSize:11,color:'var(--muted)',fontWeight:600}}>{filtered.length} oficio(s)</p>
+    <Card style={{overflow:'hidden'}}>
+      {mob
+        ?<div>{filtered.length===0&&<p style={{padding:'40px 16px',textAlign:'center',color:'var(--muted)',fontSize:13}}>Nenhum oficio.</p>}{filtered.map(o=>{const sec=gS(o.secretaria_id);return <div key={o.id} style={{padding:14,borderBottom:'1px solid var(--brd)'}}><div style={{display:'flex',gap:10,marginBottom:8}}><SAv id={o.secretaria_id} size={36}/><div style={{flex:1,minWidth:0}}><p style={{fontSize:11,fontWeight:900,color:G,fontFamily:'monospace'}}>{o.numero}</p><p style={{fontSize:13,fontWeight:700,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{o.assunto}</p></div></div><div style={{display:'flex',gap:5,marginBottom:8,flexWrap:'wrap'}}><Pb v={o.prioridade}/><Sb v={o.status} list={STO}/></div><div style={{display:'flex',gap:5,justifyContent:'flex-end'}}><IB icon="eye" color={G} onClick={()=>{setSel(o);setModal('view');}}/><IB icon="edit" color="#d97706" onClick={()=>{setSel(o);setModal('edit');}}/><IB icon="trash" color="#dc2626" onClick={()=>del(o.id)}/></div></div>;})}
+        </div>
+        :<table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+          <thead><tr style={{borderBottom:'1.5px solid var(--brd)',background:'var(--inp)'}}>{['Número','Secretaria','Assunto','Prioridade','Status','Prazo','Acoes'].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+          <tbody>
+            {filtered.length===0&&<tr><td colSpan={7} style={{padding:'40px 14px',textAlign:'center',color:'var(--muted)',fontSize:13}}>Nenhum oficio encontrado.</td></tr>}
+            {filtered.map(o=>{const sec=gS(o.secretaria_id);const over=isOv(o.prazo)&&!['concluido','arquivado'].includes(o.status);return <tr key={o.id} style={{borderBottom:'1px solid var(--brd)',transition:'background .1s'}} onMouseEnter={e=>e.currentTarget.style.background='var(--hov)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <td style={{padding:'10px 14px',fontFamily:'monospace',fontWeight:800,color:G,fontSize:11,whiteSpace:'nowrap'}}>{o.numero}</td>
+              <td style={{padding:'10px 14px'}}><div style={{display:'flex',alignItems:'center',gap:8}}><SAv id={o.secretaria_id} size={24}/><span style={{fontSize:10,color:'var(--muted)'}}>{sec.sigla}</span></div></td>
+              <td style={{padding:'10px 14px',maxWidth:220}}><p style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontWeight:600,color:'var(--txt)'}}>{o.assunto}</p></td>
+              <td style={{padding:'10px 14px',whiteSpace:'nowrap'}}><Pb v={o.prioridade}/></td>
+              <td style={{padding:'10px 14px',whiteSpace:'nowrap'}}><Sb v={o.status} list={STO}/></td>
+              <td style={{padding:'10px 14px',whiteSpace:'nowrap'}}><span style={{fontSize:11,color:['concluido','arquivado'].includes(o.status)?'#94a3b8':'#1a3a6e',fontWeight:over?800:600}}>{o.prazo?fD(o.prazo):'--'}</span></td>
+              <td style={{padding:'10px 14px'}}><div style={{display:'flex',gap:3}}><IB icon="eye" color={G} title="Ver" onClick={()=>{setSel(o);setModal('view');}} sm/><IB icon="edit" color="#d97706" title="Editar" onClick={()=>{setSel(o);setModal('edit');}} sm/><IB icon="trash" color="#dc2626" title="Excluir" onClick={()=>del(o.id)} sm/></div></td>
+            </tr>;})}
+          </tbody>
+        </table>
+      }
+    </Card>
+    {modal==='new'&&<Modal title="Novo Ofício" onClose={()=>setModal(null)} wide><OficioForm oficios={oficios} onSave={save} onClose={()=>setModal(null)}/></Modal>}
+    {modal==='view'&&sel&&<Modal title="Detalhes do Ofício" onClose={()=>setModal(null)} wide><OficioDetail o={sel} setOficios={setOficios} onClose={()=>setModal(null)} onEdit={o=>{setModal('edit');setSel(o);}}/></Modal>}
+    {modal==='edit'&&sel&&<Modal title="Editar Ofício" onClose={()=>setModal(null)} wide><OficioForm initial={sel} oficios={oficios} onSave={save} onClose={()=>setModal(null)}/></Modal>}
+  </div>;
+}
+
+function PesquisasPage({oficios,pesquisas,setPesquisas,addLog,toast}){
+  const mob=useMob();
+  const[modal,setModal]=useState(null);const[sel,setSel]=useState(null);const[det,setDet]=useState(null);
+  const[q,setQ]=useState('');const[fSec,setFSec]=useState('');const[fSt,setFSt]=useState('');const[fPer,setFPer]=useState('');const[showF,setShowF]=useState(false);
+  const filtered=pesquisas.filter(p=>{const sq=q.toLowerCase();return(!q||p.numero.toLowerCase().includes(sq)||p.objeto.toLowerCase().includes(sq)||(p.oficio_ref||'').toLowerCase().includes(sq))&&(!fSec||p.secretaria_id===Number(fSec))&&(!fSt||p.status===fSt)&&(!fPer||p.periodo===fPer);});
+  function save(data){setPesquisas(p=>{const e=p.find(x=>x.id===data.id);return e?p.map(x=>x.id===data.id?data:x):[data,...p];});addLog((modal==='new'?'Criou ':'Atualizou ')+data.numero,'Pesquisas',modal==='new'?'create':'update');toast(modal==='new'?'Pesquisa cadastrada!':'Pesquisa atualizada!','success');setModal(null);setSel(null);}
+  function del(id){if(!confirm('Excluir?'))return;setPesquisas(prev=>prev.filter(x=>x.id!==id));toast('Excluída.','info');}
+  const th={padding:'10px 14px',textAlign:'left',fontSize:9,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.06em',whiteSpace:'nowrap'};
+  return <div style={{display:'flex',flexDirection:'column',gap:16}}>
+    <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+      <div><h1 style={{fontSize:20,fontWeight:900,color:'var(--txt)'}}>Pesquisas de Preço</h1><p style={{fontSize:12,color:'var(--muted)',marginTop:2}}>Por secretaria, período e objeto - com upload de documentos</p></div>
+      <button onClick={()=>{setSel(null);setModal('new');}} style={{display:'flex',alignItems:'center',gap:7,background:G,color:'#fff',fontWeight:800,padding:'10px 16px',borderRadius:10,border:'none',cursor:'pointer',fontSize:13,fontFamily:'inherit',whiteSpace:'nowrap'}}><Ic n="plus" z={15} c="#fff"/>Nova Pesquisa</button>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:10}}>
+      {[['Total',pesquisas.length,'#1a5c38'],['Aguardando',pesquisas.filter(p=>p.status==='aguardando').length,'#4a6155'],['Em Andamento',pesquisas.filter(p=>p.status==='andamento').length,'#a07800'],['Concluídas',pesquisas.filter(p=>p.status==='concluida').length,'#1a5c38']].map(([l,v,c])=><div key={l} style={{background:'var(--card)',border:'1.5px solid '+c+'22',borderRadius:14,padding:'12px 14px',textAlign:'center'}}><p style={{fontSize:22,fontWeight:900,color:c,lineHeight:1}}>{v}</p><p style={{fontSize:9,color:'var(--muted)',fontWeight:600,marginTop:3}}>{l}</p></div>)}
+    </div>
+    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+      <div style={{flex:1,minWidth:180,position:'relative'}}><div style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)',color:'var(--muted)',pointerEvents:'none'}}><Ic n="search" z={15}/></div><input style={{...IS,paddingLeft:35}} placeholder="Buscar número, objeto ou oficio..." value={q} onChange={e=>setQ(e.target.value)} onFocus={oF} onBlur={oB}/></div>
+      <button onClick={()=>setShowF(v=>!v)} style={{width:40,height:40,borderRadius:9,border:'1.5px solid '+(showF?G:'var(--brd)'),background:showF?GB:'var(--card)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:showF?G:'var(--muted)',flexShrink:0}}><Ic n="filter" z={16}/></button>
+    </div>
+    {showF&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:8,padding:'13px 15px',background:'var(--card)',border:'1px solid var(--brd)',borderRadius:12}}>
+      <select style={{...IS,fontSize:12,padding:'7px 10px'}} value={fSec} onChange={e=>setFSec(e.target.value)}><option value="">Todas Secretarias</option>{SECS.map(s=><option key={s.id} value={s.id}>{s.sigla}</option>)}</select>
+      <select style={{...IS,fontSize:12,padding:'7px 10px'}} value={fSt} onChange={e=>setFSt(e.target.value)}><option value="">Todos Status</option>{SPQ.map(s=><option key={s.v} value={s.v}>{s.l}</option>)}</select>
+      <select style={{...IS,fontSize:12,padding:'7px 10px'}} value={fPer} onChange={e=>setFPer(e.target.value)}><option value="">Todos Períodos</option>{MESES.map(m=><option key={m} value={m}>{fmtM(m)}</option>)}</select>
+      {(fSec||fSt||fPer||q)&&<button onClick={()=>{setQ('');setFSec('');setFSt('');setFPer('');}} style={{padding:'7px 12px',border:'1.5px solid var(--brd)',borderRadius:9,background:'transparent',cursor:'pointer',fontSize:11,fontWeight:700,color:'var(--muted)',fontFamily:'inherit'}}>Limpar</button>}
+    </div>}
+    <p style={{fontSize:11,color:'var(--muted)',fontWeight:600}}>{filtered.length} pesquisa(s)</p>
+    <Card style={{overflow:'hidden'}}>
+      {mob
+        ?<div>{filtered.length===0&&<p style={{padding:'40px 16px',textAlign:'center',color:'var(--muted)',fontSize:13}}>Nenhuma pesquisa.</p>}{filtered.map(pq=>{const sec=gS(pq.secretaria_id);const st=gT(SPQ,pq.status);const vs=(pq.fornecedores||[]).map(x=>Number(x.valor||0)).filter(v=>v>0);const menor=vs.length>0?Math.min(...vs):0;return <div key={pq.id} style={{padding:14,borderBottom:'1px solid var(--brd)'}}><div style={{display:'flex',gap:10,marginBottom:8}}><div style={{width:36,height:36,borderRadius:9,background:sec.cor,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:900,fontSize:11,flexShrink:0}}>{sec.sigla.slice(0,2)}</div><div style={{flex:1,minWidth:0}}><p style={{fontSize:11,fontWeight:900,color:G,fontFamily:'monospace'}}>{pq.numero}</p><p style={{fontSize:13,fontWeight:700,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{pq.objeto}</p></div></div><div style={{display:'flex',gap:5,marginBottom:8,flexWrap:'wrap'}}><span style={{color:st.bg,background:st.cor,border:'1px solid '+st.cor,padding:'2px 8px',borderRadius:999,fontSize:10,fontWeight:700}}>{st.l}</span>{pq.oficio_ref&&<span style={{fontSize:10,color:'#0369a1',background:'#eff6ff',border:'1px solid #bfdbfe',padding:'2px 7px',borderRadius:999,fontFamily:'monospace'}}>{pq.oficio_ref}</span>}{menor>0&&<span style={{fontSize:10,color:'#059669',fontWeight:700}}>{fR(menor)}</span>}</div><div style={{display:'flex',gap:5,justifyContent:'flex-end'}}><IB icon="eye" color={G} onClick={()=>setDet(pq)}/><IB icon="edit" color="#d97706" onClick={()=>{setSel(pq);setModal('edit');}}/><IB icon="trash" color="#dc2626" onClick={()=>del(pq.id)}/></div></div>;})}
+        </div>
+        :<div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+          <thead><tr style={{borderBottom:'1.5px solid var(--brd)',background:'var(--inp)'}}>{['Número','Secretaria','Objeto','Ofício Ref.','Período','Menor Valor','Docs','Status','Acoes'].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+          <tbody>
+            {filtered.length===0&&<tr><td colSpan={9} style={{padding:'40px 14px',textAlign:'center',color:'var(--muted)',fontSize:13}}>Nenhuma pesquisa encontrada.</td></tr>}
+            {filtered.map(pq=>{const sec=gS(pq.secretaria_id);const st=gT(SPQ,pq.status);const vs=(pq.fornecedores||[]).map(x=>Number(x.valor||0)).filter(v=>v>0);const menor=vs.length>0?Math.min(...vs):0;return <tr key={pq.id} style={{borderBottom:'1px solid var(--brd)',transition:'background .1s'}} onMouseEnter={e=>e.currentTarget.style.background='var(--hov)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+              <td style={{padding:'10px 14px',fontFamily:'monospace',fontWeight:800,color:G,fontSize:11,whiteSpace:'nowrap'}}>{pq.numero}</td>
+              <td style={{padding:'10px 14px'}}><div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:24,height:24,borderRadius:6,background:sec.cor,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:10,fontWeight:900,flexShrink:0}}>{sec.sigla.slice(0,2)}</div><span style={{fontSize:10,color:'var(--muted)'}}>{sec.sigla}</span></div></td>
+              <td style={{padding:'10px 14px',maxWidth:200}}><p style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontWeight:600,color:'var(--txt)'}}>{pq.objeto}</p></td>
+              <td style={{padding:'10px 14px'}}>{pq.oficio_ref?<span style={{fontSize:10,color:'#0369a1',background:'#eff6ff',border:'1px solid #bfdbfe',padding:'2px 7px',borderRadius:999,fontFamily:'monospace',whiteSpace:'nowrap'}}>{pq.oficio_ref}</span>:<span style={{color:'var(--muted)',fontSize:11}}>--</span>}</td>
+              <td style={{padding:'10px 14px',fontSize:11,color:'var(--muted)',whiteSpace:'nowrap'}}>{fmtM(pq.periodo)}</td>
+              <td style={{padding:'10px 14px',fontSize:11,fontWeight:700,color:'#059669',whiteSpace:'nowrap'}}>{menor>0?fR(menor):'--'}</td>
+              <td style={{padding:'10px 14px',textAlign:'center'}}><span style={{fontSize:11,fontWeight:700,color:(pq.anexos||[]).length>0?G:'var(--muted)'}}>{(pq.anexos||[]).length}</span></td>
+              <td style={{padding:'10px 14px',whiteSpace:'nowrap'}}><span style={{color:st.bg,background:st.cor,border:'1px solid '+st.cor,padding:'2px 9px',borderRadius:999,fontSize:9,fontWeight:700,display:'inline-block'}}>{st.l}</span></td>
+              <td style={{padding:'10px 14px'}}><div style={{display:'flex',gap:3}}><IB icon="eye" color={G} title="Ver" onClick={()=>setDet(pq)} sm/><IB icon="edit" color="#d97706" title="Editar" onClick={()=>{setSel(pq);setModal('edit');}} sm/><IB icon="trash" color="#dc2626" title="Excluir" onClick={()=>del(pq.id)} sm/></div></td>
+            </tr>;})}
+          </tbody>
+        </table></div>
+      }
+    </Card>
+    {(modal==='new'||modal==='edit')&&<Modal title={modal==='new'?'Nova Pesquisa de Preço':'Editar Pesquisa'} onClose={()=>{setModal(null);setSel(null);}} wide><PesquisaForm initial={modal==='edit'?sel:null} oficios={oficios} pesquisas={pesquisas} onSave={save} onClose={()=>{setModal(null);setSel(null);}}/></Modal>}
+    {det&&<Modal title={'Pesquisa '+det.numero} onClose={()=>setDet(null)} wide><PesquisaDetail pq={det} setPesquisas={setPesquisas} onClose={()=>setDet(null)} onEdit={()=>{setSel(det);setDet(null);setModal('edit');}}/></Modal>}
+  </div>;
+}
+
+
+function ProcessoDetail({proc,setProcessos,onClose,onEdit,onSaveContrato}){
+  const[tab,setTab]=useState(proc.contrato&&proc.contrato.empresa?'contrato':'info');
+  const sec=gS(proc.secretaria_id);
+  const st=gT(SPL,proc.status);
+  // Contrato state
+  const ct=proc.contrato||{};
+  const[f,sf]=useState({
+    empresa:ct.empresa||'',cnpj:ct.cnpj||'',responsavel:ct.responsavel||'',
+    email:ct.email||'',telefone:ct.telefone||'',numero_contrato:ct.numero_contrato||'',
+    data_assinatura:ct.data_assinatura||'',data_vigencia:ct.data_vigencia||'',
+    objeto:ct.objeto||proc.assunto||'',valor:ct.valor||proc.valor_final||'',
+    obs:ct.obs||'',arquivos:ct.arquivos||[],
+  });
+  const up=(k,v)=>sf(p=>({...p,[k]:v}));
+  const fileRef=useRef();
+  function pickPDFs(e){
+    const files=Array.from(e.target.files);if(!files.length)return;
+    const reads=files.map(fl=>new Promise(res=>{const r=new FileReader();r.onload=ev=>res({id:uid(),nome:fl.name,tamanho:fl.size,data:td(),dataUrl:ev.target.result});r.readAsDataURL(fl);}));
+    Promise.all(reads).then(novos=>up('arquivos',[...f.arquivos,...novos]));
+  }
+  function downloadArq(arq){
+    if(!arq||!arq.dataUrl)return;
+    const a=document.createElement('a');a.href=arq.dataUrl;a.download=arq.nome;a.click();
+  }
+  function saveContrato(){
+    if(!f.empresa.trim()){alert('Informe a empresa contratada.');return;}
+    onSaveContrato({...proc,contrato:f});
+    setProcessos(prev=>prev.map(x=>x.id===proc.id?{...x,contrato:f}:x));
+  }
+  const TABS=[
+    {id:'info',l:'Detalhes',n:'file'},
+    {id:'contrato',l:'Contrato',n:'clip'},
+    {id:'anexos',l:'Documentos ('+(proc.anexos||[]).length+')',n:'ul'},
+  ];
+  const g2={display:'grid',gridTemplateColumns:'1fr 1fr',gap:12};
+  const g3={display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12};
+  return <div style={{display:'flex',flexDirection:'column',gap:14}}>
+    <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
+      <SAv id={proc.secretaria_id} size={44}/>
+      <div style={{flex:1}}>
+        <span style={{fontFamily:'monospace',fontWeight:900,color:'#1a3a6e',fontSize:12}}>{proc.numero}</span>
+        <p style={{fontSize:14,fontWeight:800,color:'var(--txt)',lineHeight:1.3}}>{proc.assunto}</p>
+        <p style={{fontSize:11,color:'var(--muted)'}}>{sec.nome}</p>
+      </div>
+    </div>
+    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+      <span style={{color:st.cor,background:st.cor+'18',border:'1px solid '+st.cor+'33',padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:700}}>{st.l}</span>
+      {proc.valor_estimado&&<span style={{color:'#059669',background:'#f0fdf4',border:'1px solid #86efac',padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:700}}>Est: {fR(proc.valor_estimado)}</span>}
+      {proc.valor_final&&<span style={{color:'#0369a1',background:'#eff6ff',border:'1px solid #bfdbfe',padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:800}}>Final: {fR(proc.valor_final)}</span>}
+    </div>
+    <div style={{display:'flex',borderBottom:'1px solid var(--brd)'}}>
+      {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:'9px 4px',fontSize:10,fontWeight:700,border:'none',background:'transparent',cursor:'pointer',fontFamily:'inherit',color:tab===t.id?'#1a3a6e':'var(--muted)',borderBottom:tab===t.id?'2px solid #1a3a6e':'2px solid transparent',marginBottom:-1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}><Ic n={t.n} z={13} c={tab===t.id?'#1a3a6e':undefined}/>{t.l}</button>)}
+    </div>
+
+    {tab==='info'&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7}}>
+      {[['Modalidade',MOD[proc.modalidade]||proc.modalidade],['Responsável',proc.responsavel||'--'],['Data Abertura',fD(proc.data_abertura)],['Previsão',fD(proc.data_prevista)],['Valor Estimado',fR(proc.valor_estimado)],['Valor Final',proc.valor_final?fR(proc.valor_final):'Não informado']].map(([k,v])=><div key={k} style={{background:'var(--inp)',borderRadius:9,padding:'9px 11px'}}><p style={{fontSize:9,color:'var(--muted)',fontWeight:800,textTransform:'uppercase',marginBottom:3}}>{k}</p><p style={{fontSize:12,fontWeight:700,color:'var(--txt)'}}>{v}</p></div>)}
+      <div style={{display:'flex',gap:10,marginTop:6,gridColumn:'1/-1'}}><PB onClick={()=>onEdit(proc)} full color="#1a3a6e"><Ic n="edit" z={14}/>Editar Processo</PB><PB onClick={onClose} outline>Fechar</PB></div>
+    </div>}
+
+    {tab==='contrato'&&<div style={{display:'flex',flexDirection:'column',gap:14}}>
+      <div style={{background:'linear-gradient(135deg,#0d2a4a,#1a3a6e)',borderRadius:12,padding:'13px 16px',color:'#fff',display:'flex',alignItems:'center',gap:10}}>
+        <Ic n="clip" z={18} c="rgba(255,255,255,.85)"/>
+        <div><p style={{fontSize:11,opacity:.8}}>Contrato vinculado ao processo</p><p style={{fontSize:13,fontWeight:800}}>{proc.numero} — {proc.assunto.slice(0,45)}</p></div>
+      </div>
+      <div style={{border:'1px solid var(--brd)',borderRadius:12,padding:'14px 16px'}}>
+        <p style={{fontSize:10,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',marginBottom:12}}>📄 Arquivos do Contrato (PDF) — pode anexar mais de um</p>
+        {f.arquivos.map((arq,i)=>(
+          <div key={arq.id||i} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',background:'#f0fdf4',border:'1.5px solid #86efac',borderRadius:10,marginBottom:8}}>
+            <div style={{width:42,height:42,borderRadius:9,background:'#dc262618',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><span style={{fontSize:11,fontWeight:900,color:'#dc2626'}}>PDF</span></div>
+            <div style={{flex:1,minWidth:0}}>
+              <p style={{fontSize:13,fontWeight:800,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{arq.nome}</p>
+              <p style={{fontSize:11,color:'var(--muted)'}}>{fKB(arq.tamanho)} · Anexado em {fD(arq.data)}</p>
+            </div>
+            <button onClick={()=>{if(arq.dataUrl){try{const b64=arq.dataUrl.split(',')[1];const bytes=atob(b64);const arr=new Uint8Array(bytes.length);for(let i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i);const blob=new Blob([arr],{type:'application/pdf'});const url=URL.createObjectURL(blob);window.open(url,'_blank');}catch(e){const a=document.createElement('a');a.href=arq.dataUrl;a.download=arq.nome;a.click();}}else{alert('Arquivo não disponível.');}}} style={{display:'flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#0369a1',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700,flexShrink:0,whiteSpace:'nowrap'}}><Ic n="eye" z={13} c="#fff"/>Ver</button>
+            <button onClick={()=>downloadArq(arq)} style={{display:'flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#059669',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700,flexShrink:0,whiteSpace:'nowrap'}}><Ic n="dl" z={13} c="#fff"/>Baixar</button>
+            <IB icon="trash" color="#dc2626" title="Remover" onClick={()=>up('arquivos',f.arquivos.filter((_,j)=>j!==i))} sm/>
+          </div>
+        ))}
+        <div onClick={()=>fileRef.current.click()} style={{border:'2px dashed #1a3a6e',borderRadius:10,padding:'20px 16px',textAlign:'center',cursor:'pointer',background:'#e8eef7',marginTop:4,transition:'all .2s'}} onMouseEnter={e=>{e.currentTarget.style.background='#dbeafe';e.currentTarget.style.borderColor='#0d2a4a';}} onMouseLeave={e=>{e.currentTarget.style.background='#e8eef7';e.currentTarget.style.borderColor='#1a3a6e';}}>
+          <Ic n="ul" z={22} c="#1a3a6e" sx={{margin:'0 auto 8px'}}/>
+          <p style={{fontSize:13,fontWeight:800,color:'#1a3a6e'}}>Clique para adicionar {f.arquivos.length>0?'mais um contrato':'o contrato em PDF'}</p>
+          <p style={{fontSize:11,color:'#1a3a6e',marginTop:3}}>Você pode anexar múltiplos arquivos PDF</p>
+        </div>
+        <input ref={fileRef} type="file" accept=".pdf,application/pdf" multiple style={{display:'none'}} onChange={pickPDFs}/>
+      </div>
+      <div style={{border:'1px solid var(--brd)',borderRadius:12,padding:'14px 16px'}}>
+        <p style={{fontSize:10,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',marginBottom:12}}>Dados do Contrato</p>
+        <div style={g3}>
+          <Fld label="Número do Contrato"><input style={IS} value={f.numero_contrato} placeholder="CONT-2025-001" onFocus={oF} onBlur={oB} onChange={e=>up('numero_contrato',e.target.value)}/></Fld>
+          <Fld label="Data de Assinatura"><input type="date" style={IS} value={f.data_assinatura} onFocus={oF} onBlur={oB} onChange={e=>up('data_assinatura',e.target.value)}/></Fld>
+          <Fld label="Data de Vigência"><input type="date" style={IS} value={f.data_vigencia} onFocus={oF} onBlur={oB} onChange={e=>up('data_vigencia',e.target.value)}/></Fld>
+        </div>
+        <div style={{marginTop:12,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <Fld label="Objeto do Contrato"><input style={IS} value={f.objeto} onFocus={oF} onBlur={oB} onChange={e=>up('objeto',e.target.value)}/></Fld>
+          <Fld label="Valor do Contrato (R$)"><input style={IS} type="number" value={f.valor} placeholder="0,00" onFocus={oF} onBlur={oB} onChange={e=>up('valor',e.target.value)}/></Fld>
+        </div>
+      </div>
+      <div style={{border:'1px solid var(--brd)',borderRadius:12,padding:'14px 16px'}}>
+        <p style={{fontSize:10,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',marginBottom:12}}>Empresa Contratada</p>
+        <div style={g2}>
+          <Fld label="Razão Social" req><input style={IS} value={f.empresa} placeholder="Nome da empresa" onFocus={oF} onBlur={oB} onChange={e=>up('empresa',e.target.value)}/></Fld>
+          <Fld label="CNPJ"><input style={IS} value={f.cnpj} placeholder="00.000.000/0001-00" onFocus={oF} onBlur={oB} onChange={e=>up('cnpj',e.target.value)}/></Fld>
+        </div>
+        <div style={{marginTop:12,display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
+          <Fld label="Responsável / Rep. Legal"><input style={IS} value={f.responsavel} placeholder="Nome do responsável" onFocus={oF} onBlur={oB} onChange={e=>up('responsavel',e.target.value)}/></Fld>
+          <Fld label="E-mail"><input type="email" style={IS} value={f.email} placeholder="contato@empresa.com.br" onFocus={oF} onBlur={oB} onChange={e=>up('email',e.target.value)}/></Fld>
+          <Fld label="Telefone"><input style={IS} value={f.telefone} placeholder="(00) 00000-0000" onFocus={oF} onBlur={oB} onChange={e=>up('telefone',e.target.value)}/></Fld>
+        </div>
+      </div>
+      <Fld label="Observações"><textarea style={{...IS,resize:'none'}} rows={3} value={f.obs} placeholder="Observações sobre o contrato..." onFocus={oF} onBlur={oB} onChange={e=>up('obs',e.target.value)}/></Fld>
+      <div style={{display:'flex',gap:10}}><PB onClick={saveContrato} color={NAVY} full><Ic n="check" z={14}/>Salvar Contrato</PB><PB onClick={onClose} outline>Fechar</PB></div>
+    </div>}
+
+    {tab==='anexos'&&<div style={{display:'flex',flexDirection:'column',gap:10}}>
+      <div style={{background:GB,border:'1.5px solid '+GD,borderRadius:10,padding:'10px 13px',display:'flex',alignItems:'center',gap:9}}>
+        <Ic n="folder" z={15} c={G}/>
+        <p style={{fontSize:11,fontWeight:700,color:G}}>Pasta: Processos / {proc.numero}</p>
+      </div>
+      <DropZone onFiles={files=>{const reads=files.map(fl=>new Promise(res=>{const r=new FileReader();r.onload=e=>res({id:uid(),nome:fl.name,tamanho:fl.size,data:td(),dataUrl:e.target.result});r.readAsDataURL(fl);}));Promise.all(reads).then(n=>{setProcessos(prev=>prev.map(x=>x.id===proc.id?{...x,anexos:[...(x.anexos||[]),...n]}:x));});}}/>
+      {(proc.anexos||[]).length===0&&<p style={{fontSize:12,color:'var(--muted)',textAlign:'center',padding:16}}>Nenhum documento anexado.</p>}
+      {(proc.anexos||[]).map(a=><ARow key={a.id} a={a} onDelete={id=>{setProcessos(prev=>prev.map(x=>x.id===proc.id?{...x,anexos:(x.anexos||[]).filter(an=>an.id!==id)}:x));}}/>)}
+      <PB onClick={onClose} outline>Fechar</PB>
+    </div>}
+
+  </div>;
+}
+
+function ProcessosPage({processos,setProcessos,addLog,toast}){
+  const mob=useMob();
+  const[modal,setModal]=useState(null);const[sel,setSel]=useState(null);
+  const[detProc,setDetProc]=useState(null);
+  const[q,setQ]=useState('');const[fSec,setFSec]=useState('');
+  const filtered=processos.filter(p=>{const sq=q.toLowerCase();return(!q||p.numero.toLowerCase().includes(sq)||p.assunto.toLowerCase().includes(sq))&&(!fSec||p.secretaria_id===Number(fSec));});
+  function save(data){setProcessos(p=>{const e=p.find(x=>x.id===data.id);return e?p.map(x=>x.id===data.id?data:x):[data,...p];});toast(modal==='new'?'Cadastrado!':'Atualizado!','success');setModal(null);setSel(null);}
+  function saveContrato(data){setProcessos(p=>p.map(x=>x.id===data.id?data:x));setDetProc(null);toast('Contrato salvo!','success');}
+  function del(id){if(!confirm('Excluir?'))return;setProcessos(prev=>prev.filter(x=>x.id!==id));toast('Excluído.','info');}
+  function PlForm({ini,pls,onSave,onClose}){
+    const nxt='PL-'+new Date().getFullYear()+'-'+String(pls.length+1).padStart(4,'0');
+    const[f,sf]=useState(ini||{numero:nxt,secretaria_id:1,modalidade:'pregao_eletronico',assunto:'',status:'solicitado',data_abertura:td(),data_prevista:'',responsavel:'',valor_estimado:'',valor_final:'',obs:'',anexos:[],contrato:null});
+    const up=(k,v)=>sf(p=>({...p,[k]:v}));
+    function sv(){if(!f.assunto.trim()){alert('Preencha o assunto.');return;}onSave({...f,secretaria_id:Number(f.secretaria_id),id:f.id||uid()});}
+    return <div style={{display:'flex',flexDirection:'column',gap:13}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+        <Fld label="Número"><input style={IS} value={f.numero} readOnly={!!ini} onFocus={oF} onBlur={oB} onChange={e=>up('numero',e.target.value)}/></Fld>
+        <Fld label="Secretaria"><select style={IS} value={f.secretaria_id} onFocus={oF} onBlur={oB} onChange={e=>up('secretaria_id',e.target.value)}>{SECS.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}</select></Fld>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+        <Fld label="Modalidade"><select style={IS} value={f.modalidade} onFocus={oF} onBlur={oB} onChange={e=>up('modalidade',e.target.value)}>{Object.entries(MOD).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></Fld>
+        <Fld label="Status"><select style={IS} value={f.status} onFocus={oF} onBlur={oB} onChange={e=>up('status',e.target.value)}>{SPL.map(s=><option key={s.v} value={s.v}>{s.l}</option>)}</select></Fld>
+      </div>
+      <Fld label="Assunto / Objeto" req><input style={IS} value={f.assunto} onFocus={oF} onBlur={oB} onChange={e=>up('assunto',e.target.value)}/></Fld>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
+        <Fld label="Abertura"><input type="date" style={IS} value={f.data_abertura} onFocus={oF} onBlur={oB} onChange={e=>up('data_abertura',e.target.value)}/></Fld>
+        <Fld label="Previsão"><input type="date" style={IS} value={f.data_prevista} onFocus={oF} onBlur={oB} onChange={e=>up('data_prevista',e.target.value)}/></Fld>
+        <Fld label="Responsável"><input style={IS} value={f.responsavel} onFocus={oF} onBlur={oB} onChange={e=>up('responsavel',e.target.value)}/></Fld>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+        <Fld label="Valor Estimado (R$)"><input style={IS} type="number" value={f.valor_estimado} placeholder="0,00" onFocus={oF} onBlur={oB} onChange={e=>up('valor_estimado',e.target.value)}/></Fld>
+        <Fld label="Valor Final (R$)"><input style={IS} type="number" value={f.valor_final||''} placeholder="0,00 — após homologação" onFocus={oF} onBlur={oB} onChange={e=>up('valor_final',e.target.value)}/></Fld>
+      </div>
+      <div style={{border:'1px solid var(--brd)',borderRadius:12,padding:'12px 14px'}}>
+        <p style={{fontSize:10,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',marginBottom:10}}>Documentos do Processo</p>
+        <div style={{background:GB,border:'1.5px solid '+GD,borderRadius:10,padding:'10px 13px',display:'flex',alignItems:'center',gap:9,marginBottom:10}}><Ic n="folder" z={15} c={G}/><p style={{fontSize:11,fontWeight:700,color:G}}>Pasta: Processos / {f.numero}</p></div>
+        <DropZone onFiles={files=>{const reads=files.map(fl=>new Promise(res=>{const r=new FileReader();r.onload=e=>res({id:uid(),nome:fl.name,tamanho:fl.size,data:td(),dataUrl:e.target.result});r.readAsDataURL(fl);}));Promise.all(reads).then(n=>up('anexos',[...(f.anexos||[]),...n]));}}/>
+        {(f.anexos||[]).map(a=><ARow key={a.id} a={a} onDelete={id=>up('anexos',(f.anexos||[]).filter(x=>x.id!==id))}/>)}
+      </div>
+      <div style={{display:'flex',gap:10}}><PB onClick={sv} color={NAVY} full>{!ini?'Cadastrar':'Salvar'}</PB><PB onClick={onClose} outline>Cancelar</PB></div>
+    </div>;
+  }
+  const th={padding:'10px 14px',textAlign:'left',fontSize:9,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.06em',whiteSpace:'nowrap'};
+  return <div style={{display:'flex',flexDirection:'column',gap:14}}>
+    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+      <div style={{flex:1,minWidth:180,position:'relative'}}><div style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)',color:'var(--muted)',pointerEvents:'none'}}><Ic n="search" z={15}/></div><input style={{...IS,paddingLeft:35}} placeholder="Buscar..." value={q} onChange={e=>setQ(e.target.value)} onFocus={oF} onBlur={oB}/></div>
+      <select style={{...IS,width:140,fontSize:12,padding:'9px 10px'}} value={fSec} onChange={e=>setFSec(e.target.value)}><option value="">Secretarias</option>{SECS.map(s=><option key={s.id} value={s.id}>{s.sigla}</option>)}</select>
+      <button onClick={()=>{setSel(null);setModal('new');}} style={{display:'flex',alignItems:'center',gap:7,background:NAVY,color:'#fff',fontWeight:800,padding:'9px 15px',borderRadius:9,border:'none',cursor:'pointer',fontSize:13,fontFamily:'inherit',whiteSpace:'nowrap'}}><Ic n="plus" z={15} c="#fff"/>{!mob&&'Novo Processo'}</button>
+    </div>
+    <Card style={{overflow:'hidden'}}><div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+      <thead><tr style={{borderBottom:'1.5px solid var(--brd)',background:'var(--inp)'}}>{['Número','Secretaria','Assunto','Modalidade','Responsável','Valor Est.','Valor Final','Status','Contrato','Ações'].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
+      <tbody>
+        {filtered.length===0&&<tr><td colSpan={10} style={{padding:'40px 14px',textAlign:'center',color:'var(--muted)',fontSize:13}}>Nenhum processo.</td></tr>}
+        {filtered.map(p=>{const sec=gS(p.secretaria_id);const st=gT(SPL,p.status);return <tr key={p.id} style={{borderBottom:'1px solid var(--brd)',transition:'background .1s'}} onMouseEnter={e=>e.currentTarget.style.background='var(--hov)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+          <td style={{padding:'10px 14px',fontFamily:'monospace',fontWeight:800,color:'#1a3a6e',fontSize:11,whiteSpace:'nowrap'}}>{p.numero}</td>
+          <td style={{padding:'10px 14px'}}><SAv id={p.secretaria_id} size={24}/></td>
+          <td style={{padding:'10px 14px',maxWidth:200}}><p style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontWeight:600,color:'var(--txt)'}}>{p.assunto}</p></td>
+          <td style={{padding:'10px 14px',fontSize:11,color:'var(--muted)',whiteSpace:'nowrap'}}>{MOD[p.modalidade]||p.modalidade}</td>
+          <td style={{padding:'10px 14px',fontSize:11,color:'var(--muted)',whiteSpace:'nowrap'}}>{p.responsavel||'--'}</td>
+          <td style={{padding:'10px 14px',fontSize:11,fontWeight:700,color:'#059669',whiteSpace:'nowrap'}}>{fR(p.valor_estimado)}</td>
+              <td style={{padding:'10px 14px',fontSize:11,fontWeight:700,color:'#0369a1',whiteSpace:'nowrap'}}>{p.valor_final?fR(p.valor_final):<span style={{color:'var(--muted)'}}>--</span>}</td>
+          <td style={{padding:'10px 14px',whiteSpace:'nowrap'}}><span style={{color:st.cor,background:st.cor+'18',border:'1px solid '+st.cor+'33',padding:'2px 8px',borderRadius:999,fontSize:9,fontWeight:700,display:'inline-block'}}>{st.l}</span></td>
+              <td style={{padding:'10px 14px',textAlign:'center'}}>{p.contrato&&p.contrato.empresa?<span style={{fontSize:10,color:'#059669',background:'#f0fdf4',border:'1px solid #86efac',padding:'2px 8px',borderRadius:999,fontWeight:700,display:'inline-flex',alignItems:'center',gap:4}}><Ic n="check" z={10} c="#059669"/>Vinculado</span>:<span style={{fontSize:10,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'2px 8px',borderRadius:999,fontWeight:700}}>Sem contrato</span>}</td>
+              <td style={{padding:'10px 14px'}}><div style={{display:'flex',gap:4,alignItems:'center'}}>
+                <button onClick={()=>setDetProc(p)} style={{display:'flex',alignItems:'center',gap:5,padding:'5px 10px',background:NAVY,color:'#fff',border:'none',borderRadius:7,cursor:'pointer',fontSize:11,fontWeight:800,fontFamily:'inherit',whiteSpace:'nowrap'}}>
+                  <Ic n="clip" z={12} c="#fff"/>Contrato
+                </button>
+                <IB icon="edit" color="#d97706" title="Editar" onClick={()=>{setSel(p);setModal('edit');}} sm/>
+                <IB icon="trash" color="#dc2626" title="Excluir" onClick={()=>del(p.id)} sm/>
+              </div></td>
+        </tr>;})}
+      </tbody>
+    </table></div></Card>
+    {(modal==='new'||modal==='edit')&&<Modal title={modal==='new'?'Novo Processo':'Editar Processo'} onClose={()=>setModal(null)} wide><PlForm ini={modal==='edit'?sel:null} pls={processos} onSave={save} onClose={()=>setModal(null)}/></Modal>}
+    {detProc&&<Modal title={'Processo '+detProc.numero} onClose={()=>setDetProc(null)} wide><ProcessoDetail proc={detProc} setProcessos={setProcessos} onClose={()=>setDetProc(null)} onEdit={p=>{setDetProc(null);setSel(p);setModal('edit');}} onSaveContrato={saveContrato}/></Modal>}
+  </div>;
+}
+
+function SecretariasPage({oficios,processos}){
+  return <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14}}>
+    {SECS.map(s=>{
+      const ofs=oficios.filter(o=>o.secretaria_id===s.id);
+      const pend=ofs.filter(o=>o.status==='pendente').length;
+      const conc=ofs.filter(o=>o.status==='concluido').length;
+
+      const pct=ofs.length?Math.round(conc/ofs.length*100):0;
+      return <div key={s.id} style={{background:'var(--card)',borderRadius:16,border:'1px solid var(--brd)',overflow:'hidden',boxShadow:'0 1px 8px rgba(0,0,0,.05)'}}>
+        <div style={{height:3,background:s.cor}}/>
+        <div style={{padding:16}}>
+          <div style={{display:'flex',gap:11,marginBottom:13}}><SAv id={s.id} size={42}/><div style={{flex:1,minWidth:0}}><p style={{fontSize:12,fontWeight:800,color:'var(--txt)',lineHeight:1.3}}>{s.nome}</p><p style={{fontSize:10,color:'var(--muted)',marginTop:2}}>{s.sigla}</p></div></div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:7,marginBottom:9}}>
+            {[['Total',ofs.length,'#1a5c38'],['Pend.',pend,'#dc2626'],['Conc.',conc,'#059669']].map(([l,v,c])=><div key={l} style={{background:'var(--inp)',borderRadius:9,padding:'9px 4px',textAlign:'center'}}><p style={{fontSize:17,fontWeight:900,color:c,lineHeight:1}}>{v}</p><p style={{fontSize:9,color:'var(--muted)',fontWeight:600,marginTop:2}}>{l}</p></div>)}
+          </div>
+
+          {ofs.length>0&&<div><div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'var(--muted)',marginBottom:3}}><span>Progresso</span><span>{pct}%</span></div><div style={{height:5,background:'var(--brd)',borderRadius:99,overflow:'hidden'}}><div style={{height:'100%',width:pct+'%',background:s.cor,borderRadius:99,transition:'width .7s ease'}}/></div></div>}
+        </div>
+      </div>;
+    })}
+  </div>;
+}
+
+function AlertasPage({oficios}){
+  const secs=[
+    {title:'Atrasados',items:oficios.filter(o=>isOv(o.prazo)&&!['concluido','arquivado'].includes(o.status)),cor:'#dc2626',bg:'#fef2f2',icon:'alert'},
+    {title:'Vencendo em 5 dias',items:oficios.filter(o=>isSn(o.prazo)&&!['concluido','arquivado'].includes(o.status)),cor:'#d97706',bg:'#fffbeb',icon:'clock'},
+    {title:'Urgentes',items:oficios.filter(o=>o.prioridade==='urgente'&&!['concluido','arquivado'].includes(o.status)),cor:'#ea580c',bg:'#fff7ed',icon:'alert'},
+    {title:'Pendentes',items:oficios.filter(o=>o.status==='pendente'),cor:'#1a3a6e',bg:'#e8eef7',icon:'filter'},
+  ];
+  return <div style={{display:'flex',flexDirection:'column',gap:16}}>
+    {secs.map(sec=><Card key={sec.title} style={{overflow:'hidden'}}>
+      <div style={{padding:'12px 16px',borderBottom:'1px solid var(--brd)',display:'flex',alignItems:'center',gap:10,background:sec.bg}}><Ic n={sec.icon} z={16} c={sec.cor}/><span style={{fontSize:13,fontWeight:800,color:sec.cor}}>{sec.title}</span><span style={{marginLeft:'auto',fontSize:10,fontWeight:800,color:sec.cor,background:'white',padding:'2px 8px',borderRadius:999}}>{sec.items.length}</span></div>
+      {sec.items.length===0?<p style={{padding:16,fontSize:12,color:'var(--muted)',textAlign:'center'}}>Nenhum item</p>:sec.items.map(o=>{const s=gS(o.secretaria_id);return <div key={o.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 16px',borderBottom:'1px solid var(--brd)',flexWrap:'wrap'}}><SAv id={o.secretaria_id} size={30}/><div style={{flex:1,minWidth:160}}><p style={{fontSize:12,fontWeight:700,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}><span style={{fontFamily:'monospace',color:G}}>{o.numero}</span> - {o.assunto}</p><p style={{fontSize:10,color:'var(--muted)'}}>{s.sigla} - {fD(o.prazo)}</p></div><Pb v={o.prioridade}/></div>;})}
+    </Card>)}
+  </div>;
+}
+
+function RelatoriosPage({oficios,processos,pesquisas,toast}){
+
+  const rels=[{nome:'Ofícios por Secretaria',cor:'#1a5c38',icon:'building'},{nome:'Ofícios Pendentes',cor:'#dc2626',icon:'alert'},{nome:'Processos Licitatórios',cor:'#c9a227',icon:'gavel'},{nome:'Pesquisas de Preço',cor:'#1a3a6e',icon:'check_sq'},{nome:'Relatório Geral',cor:'#1a5c38',icon:'rep'}];
+  const sum=[{l:'Ofícios',v:oficios.length,cor:'#1a5c38'},{l:'Pendentes',v:oficios.filter(o=>o.status==='pendente').length,cor:'#a07800'},{l:'Concluídos',v:oficios.filter(o=>o.status==='concluido').length,cor:'#1a5c38'},{l:'Processos',v:processos.length,cor:'#1a3a6e'},{l:'Pesquisas',v:pesquisas.length,cor:'#1a5c38'},{l:'Valor Total',v:fR(processos.reduce((a,p)=>a+Number(p.valor_estimado||0),0)),cor:'#a07800',str:true}];
+  return <div style={{display:'flex',flexDirection:'column',gap:20}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:11}}>{sum.map((c,i)=><Card key={i} style={{padding:'14px 16px',textAlign:'center'}}><p style={{fontSize:c.str?12:24,fontWeight:900,color:c.cor,lineHeight:1}}>{c.v}</p><p style={{fontSize:9,color:'var(--muted)',fontWeight:600,marginTop:4}}>{c.l}</p></Card>)}</div>
+    <Card style={{padding:20}}><p style={{fontSize:13,fontWeight:800,color:'var(--txt)',marginBottom:16}}>Gerar Relatórios</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:11}}>{rels.map((r,i)=><div key={i} style={{border:'1.5px solid '+r.cor+'22',borderRadius:13,padding:14,background:'var(--inp)',cursor:'pointer',transition:'all .2s'}} onMouseEnter={e=>{e.currentTarget.style.background=r.cor+'0f';e.currentTarget.style.borderColor=r.cor+'55';}} onMouseLeave={e=>{e.currentTarget.style.background='var(--inp)';e.currentTarget.style.borderColor=r.cor+'22';}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:9}}><div style={{width:32,height:32,borderRadius:8,background:r.cor+'16',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic n={r.icon} z={16} c={r.cor}/></div><div style={{display:'flex',gap:4}}><button onClick={()=>toast('PDF: '+r.nome,'success')} style={{padding:'4px 8px',borderRadius:6,border:'none',background:r.cor+'16',color:r.cor,cursor:'pointer',fontFamily:'inherit',fontSize:9,fontWeight:800}}>PDF</button><button onClick={()=>toast('XLS: '+r.nome,'success')} style={{padding:'4px 8px',borderRadius:6,border:'none',background:'#05996916',color:'#059669',cursor:'pointer',fontFamily:'inherit',fontSize:9,fontWeight:800}}>XLS</button></div></div><p style={{fontSize:12,fontWeight:800,color:'var(--txt)'}}>{r.nome}</p></div>)}</div></Card>
+  </div>;
+}
+
+function UsuariosPage({usuarios,setUsuarios,toast}){
+  const[modal,setModal]=useState(null);const[sel,setSel]=useState(null);
+  function save(data){setUsuarios(p=>{const e=p.find(u=>u.id===data.id);return e?p.map(u=>u.id===data.id?data:u):[data,...p];});toast(modal==='new'?'Criado!':'Atualizado!','success');setModal(null);setSel(null);}
+  function del(id){if(!confirm('Excluir?'))return;setUsuarios(p=>p.filter(x=>x.id!==id));toast('Excluído.','info');}
+  function UFrm({ini,onSave,onClose}){
+    const[f,sf]=useState(ini||{nome:'',cargo:'',email:'',perfil:'setor_compras',ativo:true,avatar:''});
+    const up=(k,v)=>sf(p=>({...p,[k]:v}));
+    const ref=useRef();
+    function pickAv(e){const fl=e.target.files[0];if(!fl)return;const r=new FileReader();r.onload=ev=>up('avatar',ev.target.result);r.readAsDataURL(fl);}
+    function sv(){if(!f.nome.trim()||!f.email.trim()){alert('Preencha nome e email.');return;}if(!ini&&(!f.senha||f.senha.length<6)){alert('Senha provisória precisa ter no mínimo 6 caracteres.');return;}if(!ini&&f.senha!==f.senha2){alert('As senhas não conferem.');return;}onSave({...f,id:f.id||uid()});}
+    const ini2=f.nome?f.nome.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase():'?';
+    return <div style={{display:'flex',flexDirection:'column',gap:14}}>
+      <div style={{display:'flex',alignItems:'center',gap:16}}><div style={{position:'relative',cursor:'pointer'}} onClick={()=>ref.current.click()}><div style={{width:64,height:64,borderRadius:14,background:f.avatar?'transparent':G,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',border:'2px dashed '+GD}}>{f.avatar?<img src={f.avatar} alt="av" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:20,fontWeight:900,color:'#fff'}}>{ini2}</span>}</div></div><p style={{fontSize:11,color:'var(--muted)'}}>Clique para foto</p><input ref={ref} type="file" accept="image/*" style={{display:'none'}} onChange={pickAv}/></div>
+      <Fld label="Nome Completo" req><input style={IS} value={f.nome} onFocus={oF} onBlur={oB} onChange={e=>up('nome',e.target.value)}/></Fld>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}><Fld label="Cargo"><input style={IS} value={f.cargo} onFocus={oF} onBlur={oB} onChange={e=>up('cargo',e.target.value)}/></Fld><Fld label="Email" req><input type="email" style={IS} value={f.email} readOnly={!!ini} onFocus={oF} onBlur={oB} onChange={e=>up('email',e.target.value)}/></Fld></div>
+      <Fld label="Perfil"><select style={IS} value={f.perfil} onFocus={oF} onBlur={oB} onChange={e=>up('perfil',e.target.value)}>{Object.entries(PERF).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></Fld>
+      {!ini&&<div style={{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:12,padding:'12px 14px'}}><p style={{fontSize:10,fontWeight:800,color:'#b45309',textTransform:'uppercase',marginBottom:10,display:'flex',alignItems:'center',gap:7}}><Ic n="lock" z={13} c="#b45309"/>Senha Provisória</p><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}><Fld label="Senha Provisória" req><input type="password" style={IS} value={f.senha||''} placeholder="Mínimo 6 caracteres" onFocus={oF} onBlur={oB} onChange={e=>up('senha',e.target.value)}/></Fld><Fld label="Confirmar Senha" req><input type="password" style={IS} value={f.senha2||''} placeholder="Repita a senha" onFocus={oF} onBlur={oB} onChange={e=>up('senha2',e.target.value)}/></Fld></div><p style={{fontSize:10,color:'#92400e',marginTop:8}}>O funcionário deverá alterar a senha no primeiro acesso.</p></div>}
+      <div style={{display:'flex',gap:10}}><PB onClick={sv} full>{!ini?'Criar':'Salvar'}</PB><PB onClick={onClose} outline>Cancelar</PB></div>
+    </div>;
+  }
+  return <div style={{display:'flex',flexDirection:'column',gap:16}}>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><p style={{fontSize:13,fontWeight:700,color:'var(--muted)'}}>{usuarios.length} usuário(s)</p><button onClick={()=>{setSel(null);setModal('new');}} style={{display:'flex',alignItems:'center',gap:7,background:G,color:'#fff',fontWeight:800,padding:'9px 15px',borderRadius:9,border:'none',cursor:'pointer',fontSize:13,fontFamily:'inherit'}}><Ic n="plus" z={15} c="#fff"/>Novo Usuario</button></div>
+    <Card style={{overflow:'hidden'}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}><thead><tr style={{borderBottom:'1.5px solid var(--brd)',background:'var(--inp)'}}>{['Usuario','Email','Perfil','Status','Acoes'].map(h=><th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:9,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>)}</tr></thead><tbody>{usuarios.map(u=>{const pc=PCOR[u.perfil]||'#64748b';return <tr key={u.id} style={{borderBottom:'1px solid var(--brd)',transition:'background .1s'}} onMouseEnter={e=>e.currentTarget.style.background='var(--hov)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><td style={{padding:'10px 14px'}}><div style={{display:'flex',alignItems:'center',gap:10}}>{u.avatar?<img src={u.avatar} alt={u.nome} style={{width:32,height:32,borderRadius:9,objectFit:'cover',flexShrink:0}}/>:<div style={{width:32,height:32,borderRadius:9,background:'#e8f5ec',display:'flex',alignItems:'center',justifyContent:'center',color:'#1a5c38',fontWeight:900,fontSize:13,flexShrink:0}}>{u.nome.charAt(0)}</div>}<div><p style={{fontWeight:700,color:'var(--txt)',fontSize:13}}>{u.nome}</p>{u.cargo&&<p style={{fontSize:9,color:'var(--muted)'}}>{u.cargo}</p>}</div></div></td><td style={{padding:'10px 14px',fontSize:11,color:'var(--muted)'}}>{u.email}</td><td style={{padding:'10px 14px'}}><span style={{color:'#d1fae5',background:'#1a5c38',border:'1px solid #2d8f5e',padding:'2px 9px',borderRadius:999,fontSize:9,fontWeight:700}}>{PERF[u.perfil]}</span></td><td style={{padding:'10px 14px'}}><span style={{color:u.ativo?'#059669':'#64748b',background:u.ativo?'#f0fdf4':'#f8fafc',border:'1px solid '+(u.ativo?'#059669':'#64748b')+'33',padding:'2px 9px',borderRadius:999,fontSize:9,fontWeight:700}}>{u.ativo?'Ativo':'Inativo'}</span></td><td style={{padding:'10px 14px'}}><div style={{display:'flex',gap:3}}><IB icon="edit" color="#d97706" onClick={()=>{setSel(u);setModal('edit');}} sm/>{u.id!==1&&<IB icon="trash" color="#dc2626" onClick={()=>del(u.id)} sm/>}</div></td></tr>;})}
+    </tbody></table></Card>
+    {(modal==='new'||modal==='edit')&&<Modal title={modal==='new'?'Novo Usuário':'Editar Usuário'} onClose={()=>setModal(null)}><UFrm ini={modal==='edit'?sel:null} onSave={save} onClose={()=>setModal(null)}/></Modal>}
+  </div>;
+}
+
+function LogsPage({logs}){
+  const[q,setQ]=useState('');
+  const filtered=[...logs].filter(l=>!q||l.usuário.toLowerCase().includes(q.toLowerCase())||l.descricao.toLowerCase().includes(q.toLowerCase())).reverse();
+  const tc={create:{bg:'#f0fdf4',txt:'#059669'},update:{bg:'#eff6ff',txt:G},delete:{bg:'#fef2f2',txt:'#dc2626'}};
+  return <div style={{display:'flex',flexDirection:'column',gap:14}}>
+    <div style={{position:'relative'}}><div style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)',color:'var(--muted)',pointerEvents:'none'}}><Ic n="search" z={15}/></div><input style={{...IS,paddingLeft:35}} placeholder="Buscar usuário ou acao..." value={q} onChange={e=>setQ(e.target.value)} onFocus={oF} onBlur={oB}/></div>
+    <Card style={{overflow:'hidden'}}><table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}><thead><tr style={{borderBottom:'1.5px solid var(--brd)',background:'var(--inp)'}}>{['Data/Hora','Usuario','Modulo','Tipo','Acao'].map(h=><th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:9,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>)}</tr></thead><tbody>{filtered.map(l=>{const c2=tc[l.tipo]||{bg:'#f8fafc',txt:'#64748b'};const cc={'Ofícios':G,'Processos':'#1a3a6e','Pesquisas':'#0369a1','Usuários':'#d97706'}[l.modulo]||'#64748b';return <tr key={l.id} style={{borderBottom:'1px solid var(--brd)',transition:'background .1s'}} onMouseEnter={e=>e.currentTarget.style.background='var(--hov)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><td style={{padding:'9px 14px',fontFamily:'monospace',fontSize:10,color:'var(--muted)',whiteSpace:'nowrap'}}>{fDT(l.data)}</td><td style={{padding:'9px 14px'}}><div style={{display:'flex',alignItems:'center',gap:7}}><div style={{width:22,height:22,borderRadius:6,background:G+'20',display:'flex',alignItems:'center',justifyContent:'center',color:G,fontWeight:900,fontSize:10}}>{l.usuário.charAt(0)}</div><span style={{fontSize:11,fontWeight:700,color:'var(--txt)'}}>{l.usuário}</span></div></td><td style={{padding:'9px 14px'}}><span style={{color:cc,background:cc+'16',border:'1px solid '+cc+'33',padding:'2px 8px',borderRadius:999,fontSize:9,fontWeight:700}}>{l.modulo}</span></td><td style={{padding:'9px 14px'}}><span style={{color:c2.txt,background:c2.bg,border:'1px solid '+c2.txt+'33',padding:'2px 8px',borderRadius:999,fontSize:9,fontWeight:700}}>{l.tipo}</span></td><td style={{padding:'9px 14px',fontSize:11,color:'var(--txt)'}}>{l.descricao}</td></tr>;})}
+    </tbody></table></Card>
+  </div>;
+}
+
+function LoginPage({onLogin}){
+  const[email,setEmail]=useState('admin@gameleira.pe.gov.br');
+  const[senha,setSenha]=useState('admin123');
+  const[loading,setLoading]=useState(false);
+  function submit(e){e.preventDefault();setLoading(true);setTimeout(()=>{setLoading(false);onLogin();},800);}
+  return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#0d2a0d,#1a5c38,#0d3d22)',padding:16}}>
+    <div style={{width:'100%',maxWidth:380}}>
+      <div style={{background:'#fff',borderRadius:20,overflow:'hidden',boxShadow:'0 24px 80px rgba(0,0,0,.4)'}}>
+        <div style={{background:'linear-gradient(135deg,#1a5c38,#2d8f5e)',padding:'32px 28px',textAlign:'center',color:'#fff'}}>
+          <div style={{width:60,height:60,background:'rgba(255,255,255,.18)',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}><Ic n="building" z={26} c="#fff"/></div>
+          <h1 style={{fontSize:20,fontWeight:900,margin:0}}>SIGCOMP</h1>
+          <p style={{fontSize:12,opacity:.8,margin:'4px 0 0'}}>Sistema de Gestão de Compras</p>
+          <p style={{fontSize:10,opacity:.6,margin:'3px 0 0'}}>Prefeitura Municipal de Gameleira/PE</p>
+        </div>
+        <form onSubmit={submit} style={{padding:'24px 28px 28px'}}>
+          <div style={{marginBottom:14}}><label style={{fontSize:10,fontWeight:800,color:'#64748b',textTransform:'uppercase',display:'block',marginBottom:6}}>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} style={IS} onFocus={oF} onBlur={oB}/></div>
+          <div style={{marginBottom:20}}><label style={{fontSize:10,fontWeight:800,color:'#64748b',textTransform:'uppercase',display:'block',marginBottom:6}}>Senha</label><input type="password" value={senha} onChange={e=>setSenha(e.target.value)} style={IS} onFocus={oF} onBlur={oB}/></div>
+          <button type="submit" disabled={loading} style={{width:'100%',padding:13,background:G,color:'#fff',fontWeight:800,fontSize:13,border:'none',borderRadius:10,cursor:loading?'not-allowed':'pointer',opacity:loading?.7:1,fontFamily:'inherit'}}>{loading?'Entrando...':'Entrar no Sistema'}</button>
+        </form>
+      </div>
+    </div>
+  </div>;
+}
+
+function BottomNav({page,setPage,alertCount}){
+  const items=[{id:'dashboard',icon:'dashboard',label:'Início'},{id:'oficios',icon:'file',label:'Ofícios'},{id:'pesquisas',icon:'check_sq',label:'Pesquisas'},{id:'processos',icon:'gavel',label:'Processos'},{id:'alertas',icon:'bell',label:'Alertas',badge:alertCount}];
+  return <nav style={{position:'fixed',bottom:0,left:0,right:0,background:'var(--card)',borderTop:'1px solid var(--brd)',display:'flex',zIndex:50}}>
+    {items.map(item=>{const active=page===item.id;return <button key={item.id} onClick={()=>setPage(item.id)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'9px 4px 7px',border:'none',background:'transparent',cursor:'pointer',color:active?G:'var(--muted)',fontFamily:'inherit',position:'relative',minWidth:0}}>
+      <div style={{position:'relative'}}><Ic n={item.icon} z={20} c={active?G:undefined}/>{item.badge>0&&<span style={{position:'absolute',top:-4,right:-5,width:14,height:14,background:'#dc2626',color:'#fff',borderRadius:'50%',fontSize:8,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900}}>{item.badge>9?'9+':item.badge}</span>}</div>
+      <span style={{fontSize:9,fontWeight:active?800:600,lineHeight:1}}>{item.label}</span>
+      {active&&<div style={{position:'absolute',top:0,left:'50%',transform:'translateX(-50%)',width:20,height:2,background:G,borderRadius:'0 0 4px 4px'}}/>}
+    </button>;})}
+  </nav>;
+}
+
+function App(){
+  const[loggedIn,setLoggedIn]=useState(false);
+  const[dark,setDark]=useState(false);
+  const[page,setPage]=useState('dashboard');
+  const[sideOpen,setSideOpen]=useState(true);
+  const[mobMenu,setMobMenu]=useState(false);
+  const[toastData,setToastData]=useState(null);
+  const[oficios,setOficios]=useState(INIT_OF);
+  const[processos,setProcessos]=useState(INIT_PL);
+  const[pesquisas,setPesquisas]=useState(INIT_PQ);
+  const[usuarios,setUsuarios]=useState(INIT_US);
+  const[logs,setLogs]=useState(INIT_LG);
+  const mob=useMob();
+  useEffect(()=>{if(mob)setSideOpen(false);else setSideOpen(true);},[mob]);
+  const addLog=(desc,mod,tipo)=>setLogs(p=>[...p,{id:uid(),usuário:'Voce',modulo:mod,tipo:tipo||'update',descricao:desc,data:new Date().toISOString()}]);
+  const toast=(msg,type)=>setToastData({msg,type:type||'info'});
+  const alertCount=oficios.filter(o=>(isOv(o.prazo)||isSn(o.prazo)||o.status==='pendente')&&!['concluido','arquivado'].includes(o.status)).length;
+  const TITLES={dashboard:'Dashboard',oficios:'Controle de Ofícios',processos:'Processos Licitatórios',pesquisas:'Pesquisas de Preço',secretarias:'Secretarias',alertas:'Alertas',relatórios:'Relatórios',usuarios:'Usuários',logs:'Logs do Sistema'};
+  const C=dark?{'--bg':'#081a0e','--card':'#0d2618','--brd':'#1a3d2a','--txt':'#e8f5ec','--muted':'#7aab8a','--inp':'#081a0e','--hov':'#1a3d2a','--sb':'#040e07','--sbf':'#d1fae5','--sbb':'#1a5c38'}:{'--bg':'#f0f4f1','--card':'#ffffff','--brd':'#d4e8d9','--txt':'#0a1f10','--muted':'#4a6155','--inp':'#f5f9f6','--hov':'#e8f5ec','--sb':'#0d3d22','--sbf':'#d1fae5','--sbb':'#1a5c38'};
+  useEffect(()=>{const root=document.documentElement;Object.entries(C).forEach(([k,v])=>root.style.setProperty(k,v));},[dark]);
+  if(!loggedIn)return <LoginPage onLogin={()=>setLoggedIn(true)}/>;
+  const NAV=[{id:'dashboard',l:'Dashboard',icon:'dashboard'},{id:'oficios',l:'Ofícios',icon:'file'},{id:'processos',l:'Processos Licit.',icon:'gavel'},{id:'pesquisas',l:'Pesquisas de Preço',icon:'check_sq'},{id:'secretarias',l:'Secretarias',icon:'building'},{id:'alertas',l:'Alertas',icon:'bell',badge:alertCount},{id:'relatórios',l:'Relatórios',icon:'rep'},{id:'usuarios',l:'Usuários',icon:'users'},{id:'logs',l:'Logs',icon:'log'}];
+
+  function SideContent({mini,mobile}){
+    return <>
+      <div style={{padding:'13px 11px',borderBottom:'1px solid var(--sbb)',display:'flex',alignItems:'center',gap:10}}>
+        <div style={{width:34,height:34,borderRadius:9,background:'linear-gradient(135deg,#1a5c38,#2d8f5e)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ic n="building" z={17} c="#fff"/></div>
+        {(!mini||mobile)&&<div style={{minWidth:0}}><p style={{fontSize:12,fontWeight:900,color:'#4ade80',lineHeight:1.1}}>SIGCOMP</p><p style={{fontSize:9,color:'var(--sbf)',opacity:.5,fontWeight:700}}>GAMELEIRA · PE</p></div>}
+        {mobile&&<button onClick={()=>setMobMenu(false)} style={{marginLeft:'auto',border:'none',background:'transparent',cursor:'pointer',color:'var(--sbf)',opacity:.5,display:'flex'}}><Ic n="x" z={18}/></button>}
+        {!mini&&!mobile&&<button onClick={()=>setSideOpen(false)} style={{marginLeft:'auto',width:26,height:26,borderRadius:6,border:'none',background:'transparent',cursor:'pointer',color:'var(--sbf)',opacity:.4,display:'flex',alignItems:'center',justifyContent:'center'}}><Ic n="chevL" z={15}/></button>}
+      </div>
+      <nav style={{flex:1,padding:'9px 7px',display:'flex',flexDirection:'column',gap:2,overflowY:'auto'}}>
+        {NAV.map(item=>{const active=page===item.id;return <button key={item.id} onClick={()=>{setPage(item.id);if(mobile)setMobMenu(false);}} style={{display:'flex',alignItems:'center',gap:10,padding:(!mini||mobile)?'9px 10px':'9px',borderRadius:10,border:'none',cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700,width:'100%',background:active?G2:'transparent',color:active?'#fff':'var(--sbf)',opacity:active?1:.65,justifyContent:(!mini||mobile)?'flex-start':'center',transition:'all .15s',textAlign:'left'}} onMouseEnter={e=>{if(!active){e.currentTarget.style.background='rgba(255,255,255,.08)';e.currentTarget.style.opacity='1';}}} onMouseLeave={e=>{if(!active){e.currentTarget.style.background='transparent';e.currentTarget.style.opacity='.65';}}}>
+          <div style={{position:'relative',flexShrink:0}}><Ic n={item.icon} z={17}/>{item.badge>0&&<span style={{position:'absolute',top:-5,right:-5,width:13,height:13,background:'#dc2626',color:'#fff',borderRadius:'50%',fontSize:7,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900}}>{item.badge>9?'9+':item.badge}</span>}</div>
+          {(!mini||mobile)&&<span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.l}</span>}
+        </button>;})}
+      </nav>
+      <div style={{padding:'9px 7px',borderTop:'1px solid var(--sbb)',display:'flex',flexDirection:'column',gap:2}}>
+        <button onClick={()=>setDark(v=>!v)} style={{display:'flex',alignItems:'center',gap:10,padding:(!mini||mobile)?'9px 10px':'9px',borderRadius:10,border:'none',background:'transparent',cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700,color:'var(--sbf)',opacity:.5,width:'100%',justifyContent:(!mini||mobile)?'flex-start':'center'}} onMouseEnter={e=>{e.currentTarget.style.background='rgba(255,255,255,.08)';e.currentTarget.style.opacity='1';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.opacity='.5';}}><Ic n={dark?'sun':'moon'} z={16}/>{(!mini||mobile)&&(dark?'Modo Claro':'Modo Escuro')}</button>
+        <button onClick={()=>setLoggedIn(false)} style={{display:'flex',alignItems:'center',gap:10,padding:(!mini||mobile)?'9px 10px':'9px',borderRadius:10,border:'none',background:'transparent',cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700,color:'#fca5a5',opacity:.8,width:'100%',justifyContent:(!mini||mobile)?'flex-start':'center'}} onMouseEnter={e=>{e.currentTarget.style.background='rgba(220,38,38,.15)';e.currentTarget.style.opacity='1';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.opacity='.8';}}><Ic n="logout" z={16} c="#fca5a5"/>{(!mini||mobile)&&'Sair'}</button>
+      </div>
+    </>;
+  }
+
+  return <div style={{fontFamily:'system-ui,sans-serif',display:'flex',height:'100dvh',overflow:'hidden',background:'var(--bg)',...C}}>
+    {mobMenu&&<div onClick={()=>setMobMenu(false)} style={{position:'fixed',inset:0,zIndex:40,background:'rgba(0,0,0,.5)'}}/>}
+    {mob&&mobMenu&&<aside style={{position:'fixed',inset:'0 auto 0 0',width:256,background:'var(--sb)',display:'flex',flexDirection:'column',zIndex:50}}><SideContent mini={false} mobile={true}/></aside>}
+    {!mob&&<aside style={{width:sideOpen?228:60,flexShrink:0,transition:'width .25s ease',background:'var(--sb)',borderRight:'1px solid var(--sbb)',display:'flex',flexDirection:'column',overflow:'hidden',zIndex:30}}><SideContent mini={!sideOpen} mobile={false}/></aside>}
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minWidth:0}}>
+      <header style={{flexShrink:0,background:'var(--card)',borderBottom:'1px solid var(--brd)',padding:'10px 16px',display:'flex',alignItems:'center',gap:12,zIndex:10}}>
+        {mob&&<button onClick={()=>setMobMenu(true)} style={{padding:7,borderRadius:9,border:'none',background:'transparent',cursor:'pointer',color:'var(--muted)',display:'flex'}}><Ic n="menu" z={19}/></button>}
+        {!mob&&!sideOpen&&<button onClick={()=>setSideOpen(true)} style={{padding:7,borderRadius:9,border:'none',background:'transparent',cursor:'pointer',color:'var(--muted)',display:'flex'}}><Ic n="chevR" z={18}/></button>}
+        <div style={{flex:1,minWidth:0}}><h1 style={{fontSize:mob?13:15,fontWeight:900,color:'var(--txt)',lineHeight:1.2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{TITLES[page]||'SIGCOMP'}</h1>{!mob&&<p style={{fontSize:10,color:'var(--muted)'}}>Prefeitura Municipal de Gameleira - PE</p>}</div>
+        <div style={{display:'flex',alignItems:'center',gap:9,flexShrink:0}}>
+          {mob&&<button onClick={()=>setDark(v=>!v)} style={{width:34,height:34,borderRadius:8,border:'1px solid var(--brd)',background:'var(--card)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic n={dark?'sun':'moon'} z={15}/></button>}
+          <div style={{width:34,height:34,borderRadius:10,background:'#e8f5ec',display:'flex',alignItems:'center',justifyContent:'center'}}><Ic n="person" z={17} c="#1a5c38"/></div>
+          {!mob&&<button onClick={()=>setLoggedIn(false)} title="Sair" style={{width:34,height:34,borderRadius:9,border:'1.5px solid #fca5a544',background:'transparent',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#dc2626'}} onMouseEnter={e=>e.currentTarget.style.background='#dc262618'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Ic n="logout" z={16} c="#dc2626"/></button>}
+        </div>
+      </header>
+      <main style={{flex:1,overflowY:'auto',padding:mob?'12px 11px':'18px 22px',paddingBottom:mob?'74px':'18px'}}>
+        <div style={{animation:'fadeUp .3s ease both',maxWidth:1400,margin:'0 auto'}}>
+          {page==='dashboard'&&<Dashboard oficios={oficios} processos={processos} pesquisas={pesquisas}/>}
+          {page==='oficios'&&<OficiosPage oficios={oficios} setOficios={setOficios} addLog={addLog} toast={toast}/>}
+          {page==='processos'&&<ProcessosPage processos={processos} setProcessos={setProcessos} addLog={addLog} toast={toast}/>}
+          {page==='pesquisas'&&<PesquisasPage oficios={oficios} pesquisas={pesquisas} setPesquisas={setPesquisas} addLog={addLog} toast={toast}/>}
+          {page==='secretarias'&&<SecretariasPage oficios={oficios} processos={processos}/>}
+          {page==='alertas'&&<AlertasPage oficios={oficios}/>}
+          {page==='relatórios'&&<RelatoriosPage oficios={oficios} processos={processos} pesquisas={pesquisas} toast={toast}/>}
+          {page==='usuarios'&&<UsuariosPage usuarios={usuarios} setUsuarios={setUsuarios} toast={toast}/>}
+          {page==='logs'&&<LogsPage logs={logs}/>}
+        </div>
+      </main>
+    </div>
+    {mob&&<BottomNav page={page} setPage={setPage} alertCount={alertCount}/>}
+    {toastData&&<Toast msg={toastData.msg} type={toastData.type} onDone={()=>setToastData(null)}/>}
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
