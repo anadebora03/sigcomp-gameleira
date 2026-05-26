@@ -27,18 +27,16 @@ interface Props {
 
 export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, onLogout, onCollapse, onClose, alertCount, userEmail }: Props) {
   const show = !mini || mobile
-  const { tem, perfil } = usePermissions()
+  const { tem, isAdminOrDirector } = usePermissions()
 
   // Filtrar itens do menu baseado em permissões
-  // Admin e Diretor sempre veem tudo
-  const isAdminOrDirector = perfil === 'administrador' || perfil === 'diretor_compras'
-  
+  // Admin e Diretor (por email ou perfil) sempre veem tudo
   const navVisivel = NAV.filter(item => {
     // Sem permissão requerida? sempre visível
     if (!item.permissao) return true
     
-    // Admin e Diretor: sempre visível
-    if (isAdminOrDirector) return true
+    // Admin/Diretor: sempre visível (Usuarios e Logs aparecem aqui!)
+    if (isAdminOrDirector()) return true
     
     // Outros: verificar permissão específica
     return tem(item.permissao)
