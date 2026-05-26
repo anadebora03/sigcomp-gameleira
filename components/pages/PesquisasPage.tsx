@@ -4,22 +4,15 @@ import {Ic,IB,PB,Card,Fld,Sb,SAv,IS,oF,oB,G,GB,GD,NAVY} from '@/components/ui/at
 import Modal from '@/components/ui/Modal'
 import {SECS,SPQ,MESES} from '@/lib/constants'
 import {gS,gT,uid} from '@/utils/helpers'
+import {useUpload} from '@/hooks/useUpload'
+import ARow from '@/components/ui/ARow'
+import {deleteArquivo,getSignedUrl} from '@/lib/storage'
 import {td,fD,fR,fKB,fmtM,nPq} from '@/utils/formatters'
 
-// ── helpers inline ─────────────────────────────────────────────────────────────
-function readAll(files:File[]):Promise<any[]>{
-  return Promise.all(files.map(fl=>new Promise(res=>{
-    const r=new FileReader()
-    r.onload=e=>res({id:uid(),nome:fl.name,tamanho:fl.size,data:td(),dataUrl:(e.target as any).result})
-    r.readAsDataURL(fl)
-  })))
-}
-function viewFile(arq:any){
-  try{const b64=arq.dataUrl.split(',')[1];const bytes=atob(b64);const arr=new Uint8Array(bytes.length);for(let i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i);const mime=arq.nome.toLowerCase().endsWith('.pdf')?'application/pdf':arq.dataUrl.split(';')[0].split(':')[1]||'application/octet-stream';window.open(URL.createObjectURL(new Blob([arr],{type:mime})),'_blank')}catch{alert('Não foi possível abrir.')}
-}
 
 // ── PesquisaForm ───────────────────────────────────────────────────────────────
 function PesquisaForm({initial,oficios,pesquisas,onSave,onClose}:any){
+  const[uploadFornId,setUploadFornId]=useState<number|null>(null)
   const hoje=new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0')
   const nxt=`PQ-${new Date().getFullYear()}-${String(pesquisas.length+1).padStart(4,'0')}`
   const[f,sf]=useState(initial||{numero:nxt,secretaria_id:1,objeto:'',descricao:'',oficio_ref:'',periodo:hoje,prazo_cotacao:'',responsavel:'',status:'aguardando',obs:'',fornecedores:[{id:uid(),nome:'',cnpj:'',email:'',telefone:'',valor:'',obs:'',arquivos:[]}],anexos:[]})
@@ -104,23 +97,23 @@ function PesquisaForm({initial,oficios,pesquisas,onSave,onClose}:any){
               <div style={{marginTop:10}}>
                 <p style={{fontSize:9,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:6}}>📎 Orçamento / Proposta do Fornecedor</p>
                 {(forn.arquivos||[]).map((arq:any,ai:number)=>(
-                  <div key={arq.id||ai} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',background:'var(--card)',border:'1px solid var(--brd)',borderRadius:8,marginBottom:5}}>
-                    <div style={{width:30,height:30,borderRadius:6,background:'#dc262618',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                      <span style={{fontSize:8,fontWeight:900,color:'#dc2626'}}>{(arq.nome||'').split('.').pop().toUpperCase().slice(0,4)}</span>
-                    </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <p style={{fontSize:11,fontWeight:700,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{arq.nome}</p>
-                      <p style={{fontSize:9,color:'var(--muted)'}}>{fKB(arq.tamanho)}</p>
-                    </div>
-                    {arq.dataUrl&&<button onClick={()=>viewFile(arq)} style={{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',background:NAVY,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontFamily:'inherit',fontSize:10,fontWeight:700,flexShrink:0,whiteSpace:'nowrap'}}><Ic n="eye" z={11} c="#fff"/>Ver</button>}
-                    {arq.dataUrl&&<button onClick={()=>{const a=document.createElement('a');a.href=arq.dataUrl;a.download=arq.nome;a.click()}} style={{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',background:'#059669',color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontFamily:'inherit',fontSize:10,fontWeight:700,flexShrink:0,whiteSpace:'nowrap'}}><Ic n="dl" z={11} c="#fff"/>Baixar</button>}
-                    <IB icon="trash" color="#dc2626" onClick={()=>upForn(forn.id,'arquivos',(forn.arquivos||[]).filter((_:any,j:number)=>j!==ai))} sm/>
-                  </div>
+                  <ARow key={arq.id||ai} a={arq} sm onDelete={async(id:string)=>{if(arq.caminho)await deleteArquivo(arq);upForn(forn.id,'arquivos',(forn.arquivos||[]).filter((_:any,j:number)=>j!==ai))}}/>
                 ))}
-                <label style={{display:'flex',alignItems:'center',gap:7,padding:'7px 12px',background:GB,border:`1.5px dashed ${GD}`,borderRadius:8,cursor:'pointer',fontSize:11,fontWeight:700,color:G,width:'fit-content'}}>
-                  <Ic n="ul" z={14} c={G}/>Anexar orçamento
-                  <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" style={{display:'none'}}
-                    onChange={async e=>{const files=Array.from(e.target.files as FileList);if(!files.length)return;const novos=await readAll(files);upForn(forn.id,'arquivos',[...(forn.arquivos||[]),...novos]);(e.target as any).value=''}}/>
+                <label style={{display:'flex',alignItems:'center',gap:7,padding:'7px 12px',background:GB,border:`1.5px dashed ${GD}`,borderRadius:8,cursor:'pointer',fontSize:11,fontWeight:700,color:G,width:'fit-content',opacity:uploadFornId===forn.id?.6:1}}>
+                  <Ic n="ul" z={14} c={G}/>{uploadFornId===forn.id?'Enviando...':'Anexar orçamento'}
+                  <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" style={{display:'none'}} disabled={uploadFornId===forn.id}
+                    onChange={async e=>{
+                      const files=Array.from(e.target.files as FileList);if(!files.length)return;
+                      (e.target as any).value='';setUploadFornId(forn.id);
+                      const supabase=(await import('@/lib/supabase/client')).createClient();
+                      const{data:{user}}=await supabase.auth.getUser();
+                      if(!user){alert('Login necessário para upload.');setUploadFornId(null);return;}
+                      const{uploadArquivos}=await import('@/lib/storage');
+                      const{successes,errors}=await uploadArquivos(files,{modulo:'pesquisas',vinculo:f.numero,secretaria_id:Number(f.secretaria_id),userId:user.id});
+                      setUploadFornId(null);
+                      if(errors.length)alert('Erro no upload:\n'+errors.join('\n'));
+                      if(successes.length){const novos=successes.map(s=>({id:s.id,nome:s.nome,caminho:s.caminho,mime_type:s.mime_type,tamanho:s.tamanho,data:s.uploaded_at||''}));upForn(forn.id,'arquivos',[...(forn.arquivos||[]),...novos]);}
+                    }}/>
                 </label>
               </div>
             </div>
@@ -170,7 +163,7 @@ function PesquisaDetail({pq,onClose,onEdit}:any){
       <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
         <span style={{color:st.bg,background:st.cor,border:`1px solid ${st.cor}`,padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:700}}>{st.l}</span>
         {menorV>0&&<span style={{color:'#059669',background:'#f0fdf4',border:'1px solid #86efac',padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:700}}>Menor: {fR(menorV)}</span>}
-        {pq.oficio_ref&&<span style={{color:'#1a3a6e',background:'#e8eef7',border:'1px solid #bfdbfe',padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:700}}>Ref: {pq.oficio_ref}</span>}
+        {pq.oficio_ref&&<span style={{color:'#0F1E3A',background:'#e8eef7',border:'1px solid #bfdbfe',padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:700}}>Ref: {pq.oficio_ref}</span>}
       </div>
       <div style={{display:'flex',borderBottom:'1px solid var(--brd)'}}>
         {TABS.map(t=>(
@@ -198,7 +191,7 @@ function PesquisaDetail({pq,onClose,onEdit}:any){
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                   <p style={{fontSize:12,fontWeight:800,color:'var(--txt)'}}>{forn.nome||`Fornecedor ${i+1}`}</p>
                   {isMin&&<span style={{fontSize:9,background:G,color:'#fff',padding:'2px 8px',borderRadius:999,fontWeight:700}}>MENOR PREÇO</span>}
-                  {forn.valor&&<span style={{fontSize:15,fontWeight:900,color:isMin?'#059669':'#1a3a6e',marginLeft:'auto'}}>{fR(forn.valor)}</span>}
+                  {forn.valor&&<span style={{fontSize:15,fontWeight:900,color:isMin?'#059669':'#0F1E3A',marginLeft:'auto'}}>{fR(forn.valor)}</span>}
                 </div>
                 {forn.cnpj&&<p style={{fontSize:10,color:'var(--muted)',marginBottom:4}}>CNPJ: {forn.cnpj}</p>}
                 <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
@@ -212,7 +205,7 @@ function PesquisaDetail({pq,onClose,onEdit}:any){
                       <div key={ai} style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
                         <span style={{fontSize:9,fontWeight:900,color:'#dc2626',background:'#dc262618',padding:'2px 6px',borderRadius:5}}>{(arq.nome||'').split('.').pop().toUpperCase()}</span>
                         <span style={{fontSize:11,color:'var(--txt)',flex:1}}>{arq.nome}</span>
-                        {arq.dataUrl&&<button onClick={()=>viewFile(arq)} style={{fontSize:9,padding:'2px 8px',background:NAVY,color:'#fff',border:'none',borderRadius:5,cursor:'pointer',fontFamily:'inherit',fontWeight:700}}>Ver</button>}
+                        {(arq.caminho||arq.dataUrl)&&<button onClick={async()=>{const url=arq.caminho?(await getSignedUrl(arq.caminho)):arq.dataUrl;if(url)window.open(url,'_blank')}} style={{fontSize:9,padding:'2px 8px',background:NAVY,color:'#fff',border:'none',borderRadius:5,cursor:'pointer',fontFamily:'inherit',fontWeight:700}}>Ver</button>}
                       </div>
                     ))}
                   </div>
@@ -226,14 +219,7 @@ function PesquisaDetail({pq,onClose,onEdit}:any){
         <div>
           {(pq.anexos||[]).length===0&&<p style={{fontSize:12,color:'var(--muted)',textAlign:'center',padding:24}}>Nenhum documento.</p>}
           {(pq.anexos||[]).map((a:any)=>(
-            <div key={a.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',background:'var(--inp)',borderRadius:10,marginBottom:6}}>
-              <div style={{width:34,height:34,borderRadius:8,background:'#dc262618',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><span style={{fontSize:9,fontWeight:900,color:'#dc2626'}}>PDF</span></div>
-              <div style={{flex:1,minWidth:0}}>
-                <p style={{fontSize:12,fontWeight:700,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.nome}</p>
-                <p style={{fontSize:10,color:'var(--muted)'}}>{fKB(a.tamanho)} · {fD(a.data)}</p>
-              </div>
-              {a.dataUrl&&<button onClick={()=>viewFile(a)} style={{fontSize:10,padding:'4px 10px',background:NAVY,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontFamily:'inherit',fontWeight:700}}>Ver</button>}
-            </div>
+            <ARow key={a.id} a={a}/>
           ))}
         </div>
       )}

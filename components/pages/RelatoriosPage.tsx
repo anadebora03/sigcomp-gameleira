@@ -6,14 +6,14 @@ export default function RelatoriosPage({oficios,processos,pesquisas,toast}:any){
     {nome:'Ofícios por Secretaria',cor:'#1a5c38',icon:'building'},
     {nome:'Ofícios Pendentes',cor:'#dc2626',icon:'alert'},
     {nome:'Processos Licitatórios',cor:'#c9a227',icon:'gavel'},
-    {nome:'Pesquisas de Preço',cor:'#1a3a6e',icon:'check_sq'},
+    {nome:'Pesquisas de Preço',cor:'#0F1E3A',icon:'check_sq'},
     {nome:'Relatório Geral',cor:'#1a5c38',icon:'rep'},
   ]
   const sum=[
     {l:'Ofícios',v:oficios.length,cor:'#1a5c38'},
     {l:'Pendentes',v:oficios.filter((o:any)=>o.status==='pendente').length,cor:'#a07800'},
     {l:'Concluídos',v:oficios.filter((o:any)=>o.status==='concluido').length,cor:'#1a5c38'},
-    {l:'Processos',v:processos.length,cor:'#1a3a6e'},
+    {l:'Processos',v:processos.length,cor:'#0F1E3A'},
     {l:'Pesquisas',v:pesquisas.length,cor:'#1a5c38'},
     {l:'Valor Total',v:processos.reduce((a:number,p:any)=>a+Number(p.valor_estimado||0),0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),cor:'#a07800',str:true},
   ]

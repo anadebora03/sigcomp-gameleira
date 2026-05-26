@@ -3,7 +3,8 @@
 // Ported 1:1 from sigcomp-gameleira.html — DO NOT change styles
 
 export const G='#1a5c38',G2='#22744a',G3='#2d8f5e',GB='#f0f7f3',GD='#c3ddd0'
-export const GOLD='#c9a227',GOLDD='#a07800',NAVY='#1a3a6e',NAVYD='#0d2a4a'
+export const GOLD='#c9a227',GOLDD='#a07800',NAVY='#0F1E3A',NAVYD='#0a1628'
+export const GREEN_CHECK='#166534'
 
 export const IS: React.CSSProperties = {
   width:'100%',padding:'9px 12px',borderRadius:9,
@@ -38,9 +39,9 @@ export function Sb({v,list,sm}:{v?:string;list:any[];sm?:boolean}){
 
 export function Pb({v}:{v?:string}){
   const PRI=[
-    {v:'baixa',l:'Baixa',cor:'#1a3a6e',bg:'#e8eef7'},
-    {v:'media',l:'Média',cor:'#1a3a6e',bg:'#e8eef7'},
-    {v:'alta',l:'Alta',cor:'#1a3a6e',bg:'#e8eef7'},
+    {v:'baixa',l:'Baixa',cor:'#0F1E3A',bg:'#e8eef7'},
+    {v:'media',l:'Média',cor:'#0F1E3A',bg:'#e8eef7'},
+    {v:'alta',l:'Alta',cor:'#0F1E3A',bg:'#e8eef7'},
     {v:'urgente',l:'Urgente',cor:'#dc2626',bg:'#fef2f2'},
   ]
   const p=PRI.find(x=>x.v===v)||PRI[0]

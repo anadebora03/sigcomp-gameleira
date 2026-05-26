@@ -2,11 +2,12 @@
 import {useState,useRef} from 'react'
 import {Ic,IB,PB,Card,Fld,IS,oF,oB,G,NAVY} from '@/components/ui/atoms'
 import Modal from '@/components/ui/Modal'
-import {PERF,PCOR} from '@/lib/constants'
+import PermissoesSelector from '@/components/PermissoesSelector'
+import {PERF,PCOR,PERFIS_PERMISSOES,USER_STATUS} from '@/lib/constants'
 import {uid} from '@/utils/helpers'
 
 function UFrm({ini,onSave,onClose}:any){
-  const[f,sf]=useState(ini||{nome:'',cargo:'',email:'',perfil:'setor_compras',ativo:true,avatar:'',senha:'',senha2:''})
+  const[f,sf]=useState(ini||{nome:'',cargo:'',email:'',perfil:'setor_compras',ativo:true,avatar:'',status:'convite_enviado',senha:'',senha2:'',permissoes:{...(PERFIS_PERMISSOES.setor_compras||{})}})
   const up=(k:string,v:any)=>sf((p:any)=>({...p,[k]:v}))
   const ref=useRef<HTMLInputElement>(null)
   function pickAv(e:any){const fl=e.target.files[0];if(!fl)return;const r=new FileReader();r.onload=ev=>up('avatar',(ev.target as any).result);r.readAsDataURL(fl)}
@@ -17,6 +18,7 @@ function UFrm({ini,onSave,onClose}:any){
     onSave({...f,id:f.id||uid()})
   }
   const ini2=f.nome?f.nome.split(' ').slice(0,2).map((n:string)=>n[0]).join('').toUpperCase():'?'
+  const [expandPerms, setExpandPerms] = useState(false)
   return(
     <div style={{display:'flex',flexDirection:'column',gap:14}}>
       <div style={{display:'flex',alignItems:'center',gap:16}}>
@@ -33,24 +35,43 @@ function UFrm({ini,onSave,onClose}:any){
         <Fld label="Cargo"><input style={IS} value={f.cargo} onFocus={oF} onBlur={oB} onChange={e=>up('cargo',e.target.value)}/></Fld>
         <Fld label="Email" req><input type="email" style={IS} value={f.email} readOnly={!!ini} onFocus={oF} onBlur={oB} onChange={e=>up('email',e.target.value)}/></Fld>
       </div>
-      <Fld label="Perfil">
-        <select style={IS} value={f.perfil} onFocus={oF} onBlur={oB} onChange={e=>up('perfil',e.target.value)}>
-          {Object.entries(PERF).map(([v,l])=><option key={v} value={v}>{l}</option>)}
-        </select>
-      </Fld>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+        <Fld label="Perfil">
+          <select style={IS} value={f.perfil} onFocus={oF} onBlur={oB} onChange={e=>{up('perfil',e.target.value);up('permissoes',(PERFIS_PERMISSOES as any)[e.target.value]||{})}}>
+            {Object.entries(PERF).map(([v,l])=><option key={v} value={v}>{l}</option>)}
+          </select>
+        </Fld>
+        {ini&&<Fld label="Status">
+          <select style={IS} value={f.status||'ativo'} onFocus={oF} onBlur={oB} onChange={e=>up('status',e.target.value)}>
+            <option value="convite_enviado">Convite enviado</option>
+            <option value="aguardando_ativacao">Aguardando ativação</option>
+            <option value="ativo">Ativo</option>
+            <option value="bloqueado">Bloqueado</option>
+          </select>
+        </Fld>}
+      </div>
+      <button onClick={()=>setExpandPerms(!expandPerms)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',background:'#f0f4f8',border:'1px solid #d4dce6',borderRadius:10,cursor:'pointer',fontSize:12,fontWeight:700,color:NAVY,fontFamily:'inherit',transition:'all .2s'}} onMouseEnter={e=>(e.currentTarget.style.background='#e2e8f0')} onMouseLeave={e=>(e.currentTarget.style.background='#f0f4f8')}>
+        <span style={{display:'flex',alignItems:'center',gap:8}}>Permissões do Usuário</span>
+        <span style={{transform:expandPerms?'rotate(180deg)':'rotate(0deg)',transition:'transform .2s'}}>▼</span>
+      </button>
+      {expandPerms&&(
+        <div style={{background:'#fafaf9',border:'1px solid var(--brd)',borderRadius:10,padding:'14px',maxHeight:'400px',overflowY:'auto'}}>
+          <PermissoesSelector permissoes={f.permissoes||{}} onChange={p=>up('permissoes',p)} perfil={f.perfil} onPerfilChange={perf=>up('perfil',perf)}/>
+        </div>
+      )}
       {!ini&&(
-        <div style={{background:'#fffbeb',border:'1.5px solid #fde68a',borderRadius:12,padding:'12px 14px'}}>
-          <p style={{fontSize:10,fontWeight:800,color:'#b45309',textTransform:'uppercase',marginBottom:10,display:'flex',alignItems:'center',gap:7}}>
-            <Ic n="lock" z={13} c="#b45309"/>Senha Provisória
+        <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'12px 14px'}}>
+          <p style={{fontSize:10,fontWeight:800,color:'#b45309',textTransform:'uppercase',marginBottom:10}}>
+            Senha Provisória
           </p>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
             <Fld label="Senha Provisória" req><input type="password" style={IS} value={f.senha} placeholder="Mínimo 6 caracteres" onFocus={oF} onBlur={oB} onChange={e=>up('senha',e.target.value)}/></Fld>
             <Fld label="Confirmar Senha" req><input type="password" style={IS} value={f.senha2} placeholder="Repita a senha" onFocus={oF} onBlur={oB} onChange={e=>up('senha2',e.target.value)}/></Fld>
           </div>
-          <p style={{fontSize:10,color:'#92400e',marginTop:8}}>O funcionário deverá alterar a senha no primeiro acesso.</p>
+          <p style={{fontSize:10,color:'#92400e',marginTop:8}}>O funcionário deverá alterar a senha no primeiro acesso. Um e-mail de convite será enviado automaticamente.</p>
         </div>
       )}
-      <div style={{display:'flex',gap:10}}><PB onClick={sv} full>{!ini?'Criar':'Salvar'}</PB><PB onClick={onClose} outline>Cancelar</PB></div>
+      <div style={{display:'flex',gap:10}}><PB onClick={sv} full>{!ini?'Criar e Enviar Convite':'Salvar'}</PB><PB onClick={onClose} outline>Cancelar</PB></div>
     </div>
   )
 }
@@ -58,7 +79,7 @@ function UFrm({ini,onSave,onClose}:any){
 export default function UsuariosPage({usuarios,saveUsuario,deleteUsuario,toast}:any){
   const[modal,setModal]=useState<any>(null)
   const[sel,setSel]=useState<any>(null)
-  function save(data:any){saveUsuario(data,modal==='new');toast(modal==='new'?'Criado!':'Atualizado!','success');setModal(null);setSel(null)}
+  function save(data:any){saveUsuario(data,modal==='new');toast(modal==='new'?'Criado e convite enviado!':'Atualizado!','success');setModal(null);setSel(null)}
   function del(id:number){if(!confirm('Excluir usuário?'))return;deleteUsuario(id);toast('Excluído.','info')}
   return(
     <div style={{display:'flex',flexDirection:'column',gap:16}}>
@@ -80,6 +101,7 @@ export default function UsuariosPage({usuarios,saveUsuario,deleteUsuario,toast}:
           <tbody>
             {usuarios.map((u:any)=>{
               const pc=(PCOR as any)[u.perfil]||'#64748b'
+              const st=(USER_STATUS as any)[u.status||'ativo']||USER_STATUS.ativo
               return(
                 <tr key={u.id} style={{borderBottom:'1px solid var(--brd)',transition:'background .1s'}}
                   onMouseEnter={e=>(e.currentTarget.style.background='var(--hov)')}
@@ -97,8 +119,8 @@ export default function UsuariosPage({usuarios,saveUsuario,deleteUsuario,toast}:
                     </div>
                   </td>
                   <td style={{padding:'10px 14px',fontSize:11,color:'var(--muted)'}}>{u.email}</td>
-                  <td style={{padding:'10px 14px'}}><span style={{color:'#d1fae5',background:G,border:`1px solid ${G}`,padding:'2px 9px',borderRadius:999,fontSize:9,fontWeight:700}}>{(PERF as any)[u.perfil]}</span></td>
-                  <td style={{padding:'10px 14px'}}><span style={{color:u.ativo?'#059669':'#64748b',background:u.ativo?'#f0fdf4':'#f8fafc',border:`1px solid ${u.ativo?'#059669':'#64748b'}33`,padding:'2px 9px',borderRadius:999,fontSize:9,fontWeight:700}}>{u.ativo?'Ativo':'Inativo'}</span></td>
+                  <td style={{padding:'10px 14px'}}><span style={{color:'#fff',background:pc,border:`1px solid ${pc}`,padding:'2px 9px',borderRadius:999,fontSize:9,fontWeight:700}}>{(PERF as any)[u.perfil]}</span></td>
+                  <td style={{padding:'10px 14px'}}><span style={{color:st.cor,background:st.bg,border:`1px solid ${st.cor}33`,padding:'2px 9px',borderRadius:999,fontSize:9,fontWeight:700}}>{st.label}</span></td>
                   <td style={{padding:'10px 14px'}}>
                     <div style={{display:'flex',gap:3}}>
                       <IB icon="edit" color="#d97706" onClick={()=>{setSel(u);setModal('edit')}} sm/>

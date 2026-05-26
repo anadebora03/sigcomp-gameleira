@@ -27,7 +27,7 @@ export default function LogsPage({logs}:any){
           <tbody>
             {filtered.map((l:any)=>{
               const c2=tc[l.tipo]||{bg:'#f8fafc',txt:'#64748b'}
-              const cc:Record<string,string>={'Ofícios':G,'Processos':'#1a3a6e','Pesquisas':'#0369a1','Usuários':'#d97706'}
+              const cc:Record<string,string>={'Ofícios':G,'Processos':'#0F1E3A','Pesquisas':'#0369a1','Usuários':'#d97706'}
               const mc=cc[l.modulo]||'#64748b'
               return(
                 <tr key={l.id} style={{borderBottom:'1px solid var(--brd)',transition:'background .1s'}}

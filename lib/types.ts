@@ -1,7 +1,21 @@
 export interface Secretaria { id:number; nome:string; sigla:string; cor:string }
 
+/**
+ * Arquivo — representa um documento armazenado no Supabase Storage.
+ * Após o upload, dataUrl é removido e caminho/mime_type são usados para gerar URLs assinadas.
+ */
 export interface Arquivo {
-  id: number; nome: string; tamanho: number; data: string; dataUrl?: string
+  id: string              // UUID
+  nome: string            // nome original
+  caminho?: string        // path no Storage (ex: saude/2025/OFF-0001/file.pdf)
+  mime_type?: string
+  tamanho: number
+  data: string            // data do upload (ISO ou dd/mm/yyyy)
+  uploaded_by?: string    // user UUID
+  uploaded_at?: string
+  // Transient — preenchido localmente antes do upload ou após gerar signed URL
+  dataUrl?: string        // base64 (apenas pré-upload ou fallback)
+  signedUrl?: string      // URL assinada do Supabase (válida por 1h)
 }
 
 export interface Fornecedor {
@@ -43,6 +57,46 @@ export interface Pesquisa {
 export interface Usuario {
   id: number; nome: string; cargo: string; email: string
   perfil: string; ativo: boolean; avatar: string; senha?: string; senha2?: string
+  status?: string; // 'convite_enviado' | 'aguardando_ativacao' | 'ativo' | 'bloqueado'
+  permissoes?: Record<string, boolean>  // JSONB: chaves tipo "oficios.criar", valores booleanos
+}
+
+export interface Permissoes {
+  'oficios.ver': boolean
+  'oficios.criar': boolean
+  'oficios.editar': boolean
+  'oficios.excluir': boolean
+  'oficios.anexar': boolean
+  'oficios.status': boolean
+  'oficios.baixa': boolean
+  'processos.ver': boolean
+  'processos.criar': boolean
+  'processos.editar': boolean
+  'processos.cancelar': boolean
+  'processos.concluir': boolean
+  'processos.anexar': boolean
+  'pesquisas.ver': boolean
+  'pesquisas.criar': boolean
+  'pesquisas.editar': boolean
+  'pesquisas.excluir': boolean
+  'documentos.ver': boolean
+  'documentos.baixar': boolean
+  'documentos.excluir': boolean
+  'secretarias.ver': boolean
+  'secretarias.criar': boolean
+  'secretarias.editar': boolean
+  'secretarias.excluir': boolean
+  'relatorios.ver': boolean
+  'relatorios.pdf': boolean
+  'relatorios.excel': boolean
+  'usuarios.ver': boolean
+  'usuarios.criar': boolean
+  'usuarios.editar': boolean
+  'usuarios.desativar': boolean
+  'usuarios.permissoes': boolean
+  'sistema.logs': boolean
+  'sistema.config': boolean
+  'sistema.admin': boolean
 }
 
 export interface Log {

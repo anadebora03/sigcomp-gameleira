@@ -50,7 +50,7 @@ export default function Dashboard({oficios,processos,pesquisas}:any){
     {l:'Total de Ofícios',v:oficios.length,g:'#1a5c38,#2d8f5e',i:'file'},
     {l:'Pendentes',v:oficios.filter((o:any)=>o.status==='pendente').length,g:'#a07800,#c9a227',i:'alert'},
     {l:'Concluídos',v:oficios.filter((o:any)=>o.status==='concluido').length,g:'#0d3d22,#1a5c38',i:'check'},
-    {l:'Processos',v:processos.length,g:'#0d2a4a,#1a3a6e',i:'gavel'},
+    {l:'Processos',v:processos.length,g:'#0a1628,#0F1E3A',i:'gavel'},
     {l:'Pesquisas de Preço',v:pesquisas.length,g:'#1a5c38,#22744a',i:'check_sq'},
     {l:'Atrasados',v:at.length,g:'#7a5a00,#c9a227',i:'clock'},
   ]

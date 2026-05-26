@@ -9,7 +9,7 @@ export default function AlertasPage({oficios}:any){
     {title:'Atrasados',items:oficios.filter((o:any)=>{const p=o.prazo;return p&&new Date(p)<new Date()&&!['concluido','arquivado'].includes(o.status)}),cor:'#dc2626',bg:'#fef2f2',icon:'alert'},
     {title:'Vencendo em 5 dias',items:oficios.filter((o:any)=>{if(!o.prazo)return false;const d=(new Date(o.prazo).getTime()-new Date().getTime())/86400000;return d>=0&&d<=5&&!['concluido','arquivado'].includes(o.status)}),cor:'#d97706',bg:'#fffbeb',icon:'clock'},
     {title:'Urgentes',items:oficios.filter((o:any)=>o.prioridade==='urgente'&&!['concluido','arquivado'].includes(o.status)),cor:'#ea580c',bg:'#fff7ed',icon:'alert'},
-    {title:'Pendentes',items:oficios.filter((o:any)=>o.status==='pendente'),cor:'#1a3a6e',bg:'#e8eef7',icon:'filter'},
+    {title:'Pendentes',items:oficios.filter((o:any)=>o.status==='pendente'),cor:'#0F1E3A',bg:'#e8eef7',icon:'filter'},
   ]
   return(
     <div style={{display:'flex',flexDirection:'column',gap:16}}>

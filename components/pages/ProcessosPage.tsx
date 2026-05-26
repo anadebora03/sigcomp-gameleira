@@ -2,33 +2,21 @@
 import {useState,useRef} from 'react'
 import {Ic,IB,PB,Card,Fld,Sb,SAv,IS,oF,oB,G,GB,GD,NAVY} from '@/components/ui/atoms'
 import Modal from '@/components/ui/Modal'
-import DropZone from '@/components/ui/DropZone'
+import DropZoneUpload from '@/components/ui/DropZoneUpload'
+import ARowComp from '@/components/ui/ARow'
 import {SECS,SPL,MOD,MESES} from '@/lib/constants'
-import {gS,gT,uid,readFiles,openFile,downloadFile} from '@/utils/helpers'
+import {gS,gT,uid} from '@/utils/helpers'
+import {useUpload} from '@/hooks/useUpload'
+import {deleteArquivo,getSignedUrl,downloadBlobFromUrl} from '@/lib/storage'
 import {td,fD,fR,fKB,fmtM,nPl} from '@/utils/formatters'
 
-function ARow({a,onDelete}:any){
-  const ext=(a.nome||'').split('.').pop().toLowerCase()
-  const t={pdf:'PDF',doc:'DOC',docx:'DOC',xls:'XLS',xlsx:'XLS',jpg:'IMG',jpeg:'IMG',png:'IMG',zip:'ZIP'}[ext]||'ARQ'
-  const cor:any={PDF:'#dc2626',DOC:'#2563eb',XLS:'#059669',IMG:'#6d28d9',ZIP:'#d97706',ARQ:'#64748b'}
-  return(
-    <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',background:'var(--inp)',borderRadius:10,marginBottom:6}}>
-      <div style={{width:34,height:34,borderRadius:8,background:(cor[t]||'#64748b')+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><span style={{fontSize:9,fontWeight:900,color:cor[t]||'#64748b'}}>{t}</span></div>
-      <div style={{flex:1,minWidth:0}}>
-        <p style={{fontSize:12,fontWeight:700,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.nome}</p>
-        <p style={{fontSize:10,color:'var(--muted)'}}>{fKB(a.tamanho)} · {fD(a.data)}</p>
-      </div>
-      {a.dataUrl&&<IB icon="dl" color={G} title="Baixar" onClick={()=>downloadFile(a.dataUrl,a.nome)} sm/>}
-      <IB icon="trash" color="#dc2626" onClick={()=>onDelete(a.id)} sm/>
-    </div>
-  )
-}
 
 function PlForm({ini,pls,onSave,onClose}:any){
+  const{uploadFiles:upFiles,uploading:upLoading,erros:upErros}=useUpload({modulo:'processos',vinculo:ini?.numero||'novo',secretaria_id:1})
   const[f,sf]=useState(ini||{numero:nPl(pls),secretaria_id:1,modalidade:'pregao_eletronico',assunto:'',status:'solicitado',data_abertura:td(),data_prevista:'',responsavel:'',valor_estimado:'',valor_final:'',obs:'',anexos:[],contrato:null})
   const up=(k:string,v:any)=>sf((p:any)=>({...p,[k]:v}))
   function sv(){if(!f.assunto.trim()){alert('Preencha o assunto.');return}onSave({...f,secretaria_id:Number(f.secretaria_id),id:f.id||uid()})}
-  async function addAnexos(files:File[]){const n=await readFiles(files);up('anexos',[...(f.anexos||[]),...n])}
+  async function addAnexos(files:File[]){const n=await upFiles(files);if(n.length)up('anexos',[...(f.anexos||[]),...n])}
   return(
     <div style={{display:'flex',flexDirection:'column',gap:13}}>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
@@ -66,8 +54,8 @@ function PlForm({ini,pls,onSave,onClose}:any){
         <div style={{background:GB,border:`1.5px solid ${GD}`,borderRadius:10,padding:'10px 13px',display:'flex',alignItems:'center',gap:9,marginBottom:10}}>
           <Ic n="folder" z={15} c={G}/><p style={{fontSize:11,fontWeight:700,color:G}}>Pasta: Processos / {f.numero}</p>
         </div>
-        <DropZone onFiles={addAnexos}/>
-        {(f.anexos||[]).map((a:any)=><ARow key={a.id} a={a} onDelete={(id:number)=>up('anexos',(f.anexos||[]).filter((x:any)=>x.id!==id))}/>)}
+        <DropZoneUpload onFiles={addAnexos} uploading={upLoading} erros={upErros}/>
+        {(f.anexos||[]).map((a:any)=><ARowComp key={a.id} a={a} onDelete={(id:number)=>up('anexos',(f.anexos||[]).filter((x:any)=>x.id!==id))}/>)}
       </div>
       <div style={{display:'flex',gap:10}}><PB onClick={sv} color={NAVY} full>{!ini?'Cadastrar':'Salvar'}</PB><PB onClick={onClose} outline>Cancelar</PB></div>
     </div>
@@ -75,16 +63,47 @@ function PlForm({ini,pls,onSave,onClose}:any){
 }
 
 function ProcessoDetail({proc,setProcessos,onClose,onEdit,onSaveContrato}:any){
+  const{uploadFiles:upDet,uploading:upDetLoad,erros:upDetErr}=useUpload({modulo:'processos',vinculo:proc.numero,secretaria_id:proc.secretaria_id})
+  const{uploadFiles:upCont,uploading:upContLoad,erros:upContErr}=useUpload({modulo:'contratos',vinculo:proc.numero,secretaria_id:proc.secretaria_id})
   const[tab,setTab]=useState(proc.contrato&&proc.contrato.empresa?'contrato':'info')
   const ct=proc.contrato||{}
   const[f,sf]=useState({empresa:ct.empresa||'',cnpj:ct.cnpj||'',responsavel:ct.responsavel||'',email:ct.email||'',telefone:ct.telefone||'',numero_contrato:ct.numero_contrato||'',data_assinatura:ct.data_assinatura||'',data_vigencia:ct.data_vigencia||'',objeto:ct.objeto||proc.assunto||'',valor:ct.valor||proc.valor_final||'',obs:ct.obs||'',arquivos:ct.arquivos||[]})
   const up=(k:string,v:any)=>sf((p:any)=>({...p,[k]:v}))
   const fileRef=useRef<HTMLInputElement>(null)
-  async function pickPDFs(e:any){const files=Array.from(e.target.files as FileList);if(!files.length)return;const n=await readFiles(files);up('arquivos',[...f.arquivos,...n]);e.target.value=''}
-  function downloadArq(arq:any){if(arq.dataUrl)downloadFile(arq.dataUrl,arq.nome)}
-  function viewArq(arq:any){if(arq.dataUrl)openFile(arq.dataUrl,arq.nome)}
+  async function pickPDFs(e:any){const files=Array.from(e.target.files as FileList);if(!files.length)return;const n=await upCont(files);if(n.length)up('arquivos',[...f.arquivos,...n]);e.target.value=''}
+  async function downloadArq(arq:any){
+    // Supabase — buscar URL e fazer download como blob
+    if(arq.caminho){
+      const url=await getSignedUrl(arq.caminho)
+      if(url)await downloadBlobFromUrl(url,arq.nome)
+      return
+    }
+    // Legacy base64
+    if(arq.dataUrl){
+      const a=document.createElement('a');a.href=arq.dataUrl;a.download=arq.nome;a.click()
+    }
+  }
+  async function viewArq(arq:any){
+    // Supabase — abrir URL no navegador
+    if(arq.caminho){
+      const url=await getSignedUrl(arq.caminho)
+      if(url)window.open(url,'_blank')
+      return
+    }
+    // Legacy base64
+    if(arq.dataUrl){
+      try{
+        const b64=arq.dataUrl.split(',')[1]
+        const bytes=atob(b64)
+        const arr=new Uint8Array(bytes.length)
+        for(let i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i)
+        const blob=new Blob([arr],{type:'application/pdf'})
+        window.open(URL.createObjectURL(blob),'_blank')
+      }catch{alert('Não foi possível abrir o arquivo.')}
+    }
+  }
   function saveContrato(){if(!f.empresa.trim()){alert('Informe a empresa contratada.');return}const newProc={...proc,contrato:f};onSaveContrato(newProc);setProcessos((prev:any)=>prev.map((x:any)=>x.id===proc.id?newProc:x))}
-  async function addAnexos(files:File[]){const n=await readFiles(files);setProcessos((prev:any)=>prev.map((x:any)=>x.id===proc.id?{...x,anexos:[...(x.anexos||[]),...n]}:x))}
+  async function addAnexos(files:File[]){const n=await upDet(files);if(n.length)setProcessos((prev:any)=>prev.map((x:any)=>x.id===proc.id?{...x,anexos:[...(x.anexos||[]),...n]}:x))}
   const sec=gS(proc.secretaria_id)
   const st=gT(SPL,proc.status)
   const TABS=[{id:'info',l:'Detalhes',n:'file'},{id:'contrato',l:'Contrato',n:'clip'},{id:'anexos',l:`Documentos (${(proc.anexos||[]).length})`,n:'ul'}]
@@ -147,10 +166,11 @@ function ProcessoDetail({proc,setProcessos,onClose,onEdit,onSaveContrato}:any){
             ))}
             <div onClick={()=>fileRef.current?.click()} style={{border:`2px dashed ${NAVY}`,borderRadius:10,padding:'20px 16px',textAlign:'center',cursor:'pointer',background:'#e8eef7',marginTop:4,transition:'all .2s'}} onMouseEnter={e=>{(e.currentTarget as any).style.background='#bfdbfe'}} onMouseLeave={e=>{(e.currentTarget as any).style.background='#e8eef7'}}>
               <Ic n="ul" z={22} c={NAVY} sx={{margin:'0 auto 8px'}}/>
-              <p style={{fontSize:13,fontWeight:800,color:NAVY}}>Clique para adicionar {f.arquivos.length>0?'mais um contrato':'o contrato em PDF'}</p>
+              <p style={{fontSize:13,fontWeight:800,color:NAVY}}>{upContLoad?'Enviando para o Supabase...':f.arquivos.length>0?'Clique para adicionar mais um contrato':'Clique para adicionar o contrato em PDF'}</p>
               <p style={{fontSize:11,color:NAVY,marginTop:3,opacity:.7}}>Você pode anexar múltiplos arquivos PDF</p>
+              {upContErr&&upContErr.length>0&&upContErr.map((e:string,i:number)=><p key={i} style={{fontSize:10,color:'#dc2626',marginTop:4}}>✗ {e}</p>)}
             </div>
-            <input ref={fileRef} type="file" accept=".pdf,application/pdf" multiple style={{display:'none'}} onChange={pickPDFs}/>
+            <input ref={fileRef} type="file" accept=".pdf,application/pdf" multiple style={{display:'none'}} onChange={pickPDFs} disabled={upContLoad}/>
           </div>
           <div style={{border:'1px solid var(--brd)',borderRadius:12,padding:'14px 16px'}}>
             <p style={{fontSize:10,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',marginBottom:12}}>Dados do Contrato</p>
@@ -185,10 +205,10 @@ function ProcessoDetail({proc,setProcessos,onClose,onEdit,onSaveContrato}:any){
           <div style={{background:GB,border:`1.5px solid ${GD}`,borderRadius:10,padding:'10px 13px',display:'flex',alignItems:'center',gap:9}}>
             <Ic n="folder" z={15} c={G}/><p style={{fontSize:11,fontWeight:700,color:G}}>Pasta: Processos / {proc.numero}</p>
           </div>
-          <DropZone onFiles={addAnexos}/>
+          <DropZoneUpload onFiles={addAnexos} uploading={upLoading} erros={upErros}/>
           {(proc.anexos||[]).length===0&&<p style={{fontSize:12,color:'var(--muted)',textAlign:'center',padding:16}}>Nenhum documento anexado.</p>}
           {(proc.anexos||[]).map((a:any)=>(
-            <ARow key={a.id} a={a} onDelete={(id:number)=>setProcessos((prev:any)=>prev.map((x:any)=>x.id===proc.id?{...x,anexos:(x.anexos||[]).filter((an:any)=>an.id!==id)}:x))}/>
+            <ARowComp key={a.id} a={a} onDelete={(id:number)=>setProcessos((prev:any)=>prev.map((x:any)=>x.id===proc.id?{...x,anexos:(x.anexos||[]).filter((an:any)=>an.id!==id)}:x))}/>
           ))}
           <PB onClick={onClose} outline>Fechar</PB>
         </div>

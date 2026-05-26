@@ -2,38 +2,25 @@
 import {useState,useRef} from 'react'
 import {Ic,IB,PB,Card,Fld,Sb,Pb,SAv,IS,oF,oB,G,GB,GD,NAVY} from '@/components/ui/atoms'
 import Modal from '@/components/ui/Modal'
-import DropZone from '@/components/ui/DropZone'
+import DropZoneUpload from '@/components/ui/DropZoneUpload'
+import ARow from '@/components/ui/ARow'
 import {SECS,STO,PRI} from '@/lib/constants'
-import {gS,gT,uid,readFiles} from '@/utils/helpers'
+import {gS,gT,uid} from '@/utils/helpers'
+import {useUpload} from '@/hooks/useUpload'
+import {deleteArquivo} from '@/lib/storage'
 import {td,fD,fKB,isOv,isSn,nOf} from '@/utils/formatters'
 
-function ARow({a,onDelete}:any){
-  const ext=(a.nome||'').split('.').pop().toLowerCase()
-  const ico:any={pdf:'PDF',doc:'DOC',docx:'DOC',xls:'XLS',xlsx:'XLS',jpg:'IMG',jpeg:'IMG',png:'IMG',zip:'ZIP'}
-  const cor:any={PDF:'#dc2626',DOC:'#2563eb',XLS:'#059669',IMG:'#6d28d9',ZIP:'#d97706',ARQ:'#64748b'}
-  const t=ico[ext]||'ARQ'
-  return(
-    <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',background:'var(--inp)',borderRadius:10,marginBottom:6}}>
-      <div style={{width:34,height:34,borderRadius:8,background:(cor[t]||'#64748b')+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><span style={{fontSize:9,fontWeight:900,color:cor[t]||'#64748b'}}>{t}</span></div>
-      <div style={{flex:1,minWidth:0}}>
-        <p style={{fontSize:12,fontWeight:700,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.nome}</p>
-        <p style={{fontSize:10,color:'var(--muted)'}}>{fKB(a.tamanho)} · {fD(a.data)}</p>
-      </div>
-      {a.dataUrl&&<IB icon="dl" color={G} title="Baixar" onClick={()=>{const el=document.createElement('a');el.href=a.dataUrl;el.download=a.nome;el.click()}} sm/>}
-      <IB icon="trash" color="#dc2626" title="Excluir" onClick={()=>onDelete(a.id)} sm/>
-    </div>
-  )
-}
 
 function OficioForm({initial,oficios,onSave,onClose}:any){
   const[f,sf]=useState(initial||{numero:nOf(oficios),secretaria_id:1,responsavel:'',resp_acomp:'',data:td(),assunto:'',descricao:'',tipo:'Compra',prioridade:'media',prazo:'',status:'recebido',obs:'',favorito:false,historico:[],comentarios:[],anexos:[]})
   const up=(k:string,v:any)=>sf((p:any)=>({...p,[k]:v}))
+  const{uploadFiles,uploading,erros}=useUpload({modulo:'oficios',vinculo:f.numero,secretaria_id:Number(f.secretaria_id)})
   function save(){
     if(!f.assunto.trim()){alert('Preencha o assunto.');return}
     const h=[...(f.historico||[]),{data:td(),acao:!initial?'Cadastrado':'Atualizado',usuario:'Você'}]
     onSave({...f,secretaria_id:Number(f.secretaria_id),id:f.id||uid(),historico:h})
   }
-  async function addAnexos(files:File[]){const n=await readFiles(files);up('anexos',[...(f.anexos||[]),...n])}
+  async function addAnexos(files:File[]){const n=await uploadFiles(files);if(n.length)up('anexos',[...(f.anexos||[]),...n])}
   const sec=gS(Number(f.secretaria_id))
   return(
     <div style={{display:'flex',flexDirection:'column',gap:13}}>
@@ -76,8 +63,8 @@ function OficioForm({initial,oficios,onSave,onClose}:any){
         <div style={{background:GB,border:`1.5px solid ${GD}`,borderRadius:10,padding:'10px 13px',display:'flex',alignItems:'center',gap:9,marginBottom:10}}>
           <Ic n="folder" z={15} c={G}/><p style={{fontSize:11,fontWeight:700,color:G}}>Pasta: {sec.nome} / {f.numero}</p>
         </div>
-        <DropZone onFiles={addAnexos}/>
-        {(f.anexos||[]).map((a:any)=><ARow key={a.id} a={a} onDelete={(id:number)=>up('anexos',(f.anexos||[]).filter((x:any)=>x.id!==id))}/>)}
+        <DropZoneUpload onFiles={addAnexos} uploading={uploading} erros={erros}/>
+        {(f.anexos||[]).map((a:any)=><ARow key={a.id} a={a} onDelete={async(id:string)=>{const arq=(f.anexos||[]).find((x:any)=>x.id===id);if(arq?.caminho)await deleteArquivo(arq as any);up('anexos',(f.anexos||[]).filter((x:any)=>x.id!==id))}}/>)}
       </div>
       <div style={{display:'flex',gap:10}}><PB onClick={save} full>{!initial?'Cadastrar':'Salvar'}</PB><PB onClick={onClose} outline>Cancelar</PB></div>
     </div>
@@ -85,13 +72,14 @@ function OficioForm({initial,oficios,onSave,onClose}:any){
 }
 
 function OficioDetail({o,setOficios,onClose,onEdit}:any){
+  const{uploadFiles:uploadDet,uploading:uploaDet,erros:errosDet}=useUpload({modulo:'oficios',vinculo:o.numero,secretaria_id:o.secretaria_id})
   const[tab,setTab]=useState('info')
   const[comment,setCom]=useState('')
   const[coms,setComs]=useState(o.comentarios||[])
   const[anx,setAnx]=useState(o.anexos||[])
   const sec=gS(o.secretaria_id)
   function sendC(){if(!comment.trim())return;const n={texto:comment,data:td(),usuario:'Você'};setComs((p:any)=>[...p,n]);setOficios((prev:any)=>prev.map((x:any)=>x.id===o.id?{...x,comentarios:[...(x.comentarios||[]),n]}:x));setCom('')}
-  async function addFiles(files:File[]){const n=await readFiles(files);setAnx((p:any)=>[...p,...n]);setOficios((prev:any)=>prev.map((x:any)=>x.id===o.id?{...x,anexos:[...(x.anexos||[]),...n]}:x))}
+  async function addFiles(files:File[]){const n=await uploadDet(files);if(n.length){setAnx((p:any)=>[...p,...n]);setOficios((prev:any)=>prev.map((x:any)=>x.id===o.id?{...x,anexos:[...(x.anexos||[]),...n]}:x))}}
   function delA(id:number){setAnx((p:any)=>p.filter((a:any)=>a.id!==id));setOficios((prev:any)=>prev.map((x:any)=>x.id===o.id?{...x,anexos:(x.anexos||[]).filter((a:any)=>a.id!==id)}:x))}
   const TABS=[{id:'info',l:'Detalhes',n:'file'},{id:'anexos',l:`Docs (${anx.length})`,n:'clip'},{id:'hist',l:'Timeline',n:'hist'},{id:'chat',l:`Chat (${coms.length})`,n:'msg'}]
   const over=isOv(o.prazo)&&!['concluido','arquivado'].includes(o.status)
@@ -128,9 +116,9 @@ function OficioDetail({o,setOficios,onClose,onEdit}:any){
           <div style={{background:GB,border:`1.5px solid ${GD}`,borderRadius:10,padding:'10px 13px',display:'flex',alignItems:'center',gap:9}}>
             <Ic n="folder" z={15} c={G}/><p style={{fontSize:11,fontWeight:700,color:G}}>Pasta: {sec.nome} / {o.numero}</p>
           </div>
-          <DropZone onFiles={addFiles}/>
+          <DropZoneUpload onFiles={addFiles} uploading={uploaDet} erros={errosDet}/>
           {anx.length===0&&<p style={{textAlign:'center',color:'var(--muted)',fontSize:12,padding:16}}>Nenhum documento.</p>}
-          {anx.map((a:any)=><ARow key={a.id} a={a} onDelete={delA}/>)}
+          {anx.map((a:any)=><ARow key={a.id} a={a} onDelete={async(id:string)=>{const arq=anx.find((x:any)=>x.id===id);if(arq?.caminho)await deleteArquivo(arq as any);delA(id)}}/>)}
         </div>
       )}
       {tab==='hist'&&(
@@ -228,7 +216,7 @@ export default function OficiosPage({oficios,setOficios,saveOficio,deleteOficio,
                     <td style={{padding:'10px 14px',maxWidth:220}}><p style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontWeight:600,color:'var(--txt)'}}>{o.assunto}</p></td>
                     <td style={{padding:'10px 14px',whiteSpace:'nowrap'}}><Pb v={o.prioridade}/></td>
                     <td style={{padding:'10px 14px',whiteSpace:'nowrap'}}><Sb v={o.status} list={STO}/></td>
-                    <td style={{padding:'10px 14px',whiteSpace:'nowrap'}}><span style={{fontSize:11,color:done?'#94a3b8':'#1a3a6e',fontWeight:over?800:600}}>{o.prazo?fD(o.prazo):'--'}</span></td>
+                    <td style={{padding:'10px 14px',whiteSpace:'nowrap'}}><span style={{fontSize:11,color:done?'#94a3b8':'#0F1E3A',fontWeight:over?800:600}}>{o.prazo?fD(o.prazo):'--'}</span></td>
                     <td style={{padding:'10px 14px'}}>
                       <div style={{display:'flex',gap:3}}>
                         <IB icon="eye" color={G} title="Ver" onClick={()=>{setSel(o);setModal('view')}} sm/>

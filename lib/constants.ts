@@ -21,9 +21,9 @@ export const STO=[
   {v:'arquivado',l:'Arquivado',cor:'#374151',bg:'#e5e7eb'},
 ]
 export const PRI=[
-  {v:'baixa',l:'Baixa',cor:'#1a3a6e',bg:'#e8eef7'},
-  {v:'media',l:'Média',cor:'#1a3a6e',bg:'#e8eef7'},
-  {v:'alta',l:'Alta',cor:'#1a3a6e',bg:'#e8eef7'},
+  {v:'baixa',l:'Baixa',cor:'#0F1E3A',bg:'#e8eef7'},
+  {v:'media',l:'Média',cor:'#0F1E3A',bg:'#e8eef7'},
+  {v:'alta',l:'Alta',cor:'#0F1E3A',bg:'#e8eef7'},
   {v:'urgente',l:'Urgente',cor:'#dc2626',bg:'#fef2f2'},
 ]
 export const SPL=[
@@ -56,8 +56,164 @@ export const PERF:Record<string,string>={
   setor_compras:'Setor Compras',secretaria:'Secretaria',visualizador:'Visualizador',
 }
 export const PCOR:Record<string,string>={
-  administrador:'#dc2626',diretor_compras:'#f97316',
-  setor_compras:'#1a5c38',secretaria:'#1a3a6e',visualizador:'#64748b',
+  administrador:'#0F1E3A',diretor_compras:'#0F1E3A',
+  setor_compras:'#1a5c38',secretaria:'#0F1E3A',visualizador:'#64748b',
 }
+
+// ============================================================
+// PERMISSÕES GRANULARES POR MÓDULO
+// ============================================================
+
+export const MODULOS_PERMISSOES = {
+  oficios: {
+    label: 'OFÍCIOS',
+    permissoes: [
+      { chave: 'oficios.ver', label: 'Ver ofícios' },
+      { chave: 'oficios.criar', label: 'Criar ofício' },
+      { chave: 'oficios.editar', label: 'Editar ofício' },
+      { chave: 'oficios.excluir', label: 'Excluir ofício' },
+      { chave: 'oficios.anexar', label: 'Anexar documentos' },
+      { chave: 'oficios.status', label: 'Alterar status' },
+      { chave: 'oficios.baixa', label: 'Dar baixa/concluir' },
+    ]
+  },
+  processos: {
+    label: 'PROCESSOS LICITATÓRIOS',
+    permissoes: [
+      { chave: 'processos.ver', label: 'Ver processos' },
+      { chave: 'processos.criar', label: 'Criar processo' },
+      { chave: 'processos.editar', label: 'Editar processo' },
+      { chave: 'processos.cancelar', label: 'Cancelar processo' },
+      { chave: 'processos.concluir', label: 'Concluir processo' },
+      { chave: 'processos.anexar', label: 'Anexar documentos' },
+    ]
+  },
+  pesquisas: {
+    label: 'PESQUISAS DE PREÇO',
+    permissoes: [
+      { chave: 'pesquisas.ver', label: 'Ver pesquisas' },
+      { chave: 'pesquisas.criar', label: 'Criar pesquisa' },
+      { chave: 'pesquisas.editar', label: 'Editar pesquisa' },
+      { chave: 'pesquisas.excluir', label: 'Excluir pesquisa' },
+    ]
+  },
+  documentos: {
+    label: 'DOCUMENTOS',
+    permissoes: [
+      { chave: 'documentos.ver', label: 'Ver documentos' },
+      { chave: 'documentos.baixar', label: 'Baixar documentos' },
+      { chave: 'documentos.excluir', label: 'Excluir documentos' },
+    ]
+  },
+  secretarias: {
+    label: 'SECRETARIAS',
+    permissoes: [
+      { chave: 'secretarias.ver', label: 'Ver secretarias' },
+      { chave: 'secretarias.criar', label: 'Criar secretaria' },
+      { chave: 'secretarias.editar', label: 'Editar secretaria' },
+      { chave: 'secretarias.excluir', label: 'Excluir secretaria' },
+    ]
+  },
+  relatorios: {
+    label: 'RELATÓRIOS',
+    permissoes: [
+      { chave: 'relatorios.ver', label: 'Ver relatórios' },
+      { chave: 'relatorios.pdf', label: 'Exportar PDF' },
+      { chave: 'relatorios.excel', label: 'Exportar Excel' },
+    ]
+  },
+  usuarios: {
+    label: 'USUÁRIOS',
+    permissoes: [
+      { chave: 'usuarios.ver', label: 'Ver usuários' },
+      { chave: 'usuarios.criar', label: 'Cadastrar usuários' },
+      { chave: 'usuarios.editar', label: 'Editar usuários' },
+      { chave: 'usuarios.desativar', label: 'Desativar usuários' },
+      { chave: 'usuarios.permissoes', label: 'Gerenciar permissões' },
+    ]
+  },
+  sistema: {
+    label: 'SISTEMA',
+    permissoes: [
+      { chave: 'sistema.logs', label: 'Ver logs' },
+      { chave: 'sistema.config', label: 'Gerenciar configurações' },
+      { chave: 'sistema.admin', label: 'Acesso administrativo total' },
+    ]
+  }
+}
+
+// Perfis pré-definidos com permissões sugeridas
+export const PERFIS_PERMISSOES: Record<string, Record<string, boolean>> = {
+  administrador: {
+    'oficios.ver': true, 'oficios.criar': true, 'oficios.editar': true, 'oficios.excluir': true,
+    'oficios.anexar': true, 'oficios.status': true, 'oficios.baixa': true,
+    'processos.ver': true, 'processos.criar': true, 'processos.editar': true,
+    'processos.cancelar': true, 'processos.concluir': true, 'processos.anexar': true,
+    'pesquisas.ver': true, 'pesquisas.criar': true, 'pesquisas.editar': true, 'pesquisas.excluir': true,
+    'documentos.ver': true, 'documentos.baixar': true, 'documentos.excluir': true,
+    'secretarias.ver': true, 'secretarias.criar': true, 'secretarias.editar': true, 'secretarias.excluir': true,
+    'relatorios.ver': true, 'relatorios.pdf': true, 'relatorios.excel': true,
+    'usuarios.ver': true, 'usuarios.criar': true, 'usuarios.editar': true, 'usuarios.desativar': true, 'usuarios.permissoes': true,
+    'sistema.logs': true, 'sistema.config': true, 'sistema.admin': true,
+  },
+  diretor_compras: {
+    'oficios.ver': true, 'oficios.criar': true, 'oficios.editar': true, 'oficios.excluir': true,
+    'oficios.anexar': true, 'oficios.status': true, 'oficios.baixa': true,
+    'processos.ver': true, 'processos.criar': true, 'processos.editar': true,
+    'processos.cancelar': true, 'processos.concluir': true, 'processos.anexar': true,
+    'pesquisas.ver': true, 'pesquisas.criar': true, 'pesquisas.editar': true, 'pesquisas.excluir': true,
+    'documentos.ver': true, 'documentos.baixar': true, 'documentos.excluir': true,
+    'secretarias.ver': true, 'secretarias.criar': true, 'secretarias.editar': true, 'secretarias.excluir': true,
+    'relatorios.ver': true, 'relatorios.pdf': true, 'relatorios.excel': true,
+    'usuarios.ver': true, 'usuarios.criar': true, 'usuarios.editar': true, 'usuarios.desativar': true, 'usuarios.permissoes': true,
+    'sistema.logs': true, 'sistema.config': true, 'sistema.admin': true,
+  },
+  setor_compras: {
+    'oficios.ver': true, 'oficios.criar': true, 'oficios.editar': true, 'oficios.excluir': false,
+    'oficios.anexar': true, 'oficios.status': false, 'oficios.baixa': false,
+    'processos.ver': true, 'processos.criar': true, 'processos.editar': true,
+    'processos.cancelar': false, 'processos.concluir': false, 'processos.anexar': true,
+    'pesquisas.ver': true, 'pesquisas.criar': true, 'pesquisas.editar': true, 'pesquisas.excluir': false,
+    'documentos.ver': true, 'documentos.baixar': true, 'documentos.excluir': false,
+    'secretarias.ver': true, 'secretarias.criar': false, 'secretarias.editar': false, 'secretarias.excluir': false,
+    'relatorios.ver': true, 'relatorios.pdf': true, 'relatorios.excel': true,
+    'usuarios.ver': false, 'usuarios.criar': false, 'usuarios.editar': false, 'usuarios.desativar': false, 'usuarios.permissoes': false,
+    'sistema.logs': false, 'sistema.config': false, 'sistema.admin': false,
+  },
+  secretaria: {
+    'oficios.ver': true, 'oficios.criar': true, 'oficios.editar': false, 'oficios.excluir': false,
+    'oficios.anexar': true, 'oficios.status': false, 'oficios.baixa': false,
+    'processos.ver': true, 'processos.criar': false, 'processos.editar': false,
+    'processos.cancelar': false, 'processos.concluir': false, 'processos.anexar': false,
+    'pesquisas.ver': true, 'pesquisas.criar': false, 'pesquisas.editar': false, 'pesquisas.excluir': false,
+    'documentos.ver': true, 'documentos.baixar': true, 'documentos.excluir': false,
+    'secretarias.ver': true, 'secretarias.criar': false, 'secretarias.editar': false, 'secretarias.excluir': false,
+    'relatorios.ver': true, 'relatorios.pdf': false, 'relatorios.excel': false,
+    'usuarios.ver': false, 'usuarios.criar': false, 'usuarios.editar': false, 'usuarios.desativar': false, 'usuarios.permissoes': false,
+    'sistema.logs': false, 'sistema.config': false, 'sistema.admin': false,
+  },
+  visualizador: {
+    'oficios.ver': true, 'oficios.criar': false, 'oficios.editar': false, 'oficios.excluir': false,
+    'oficios.anexar': false, 'oficios.status': false, 'oficios.baixa': false,
+    'processos.ver': true, 'processos.criar': false, 'processos.editar': false,
+    'processos.cancelar': false, 'processos.concluir': false, 'processos.anexar': false,
+    'pesquisas.ver': true, 'pesquisas.criar': false, 'pesquisas.editar': false, 'pesquisas.excluir': false,
+    'documentos.ver': true, 'documentos.baixar': true, 'documentos.excluir': false,
+    'secretarias.ver': true, 'secretarias.criar': false, 'secretarias.editar': false, 'secretarias.excluir': false,
+    'relatorios.ver': true, 'relatorios.pdf': false, 'relatorios.excel': false,
+    'usuarios.ver': false, 'usuarios.criar': false, 'usuarios.editar': false, 'usuarios.desativar': false, 'usuarios.permissoes': false,
+    'sistema.logs': false, 'sistema.config': false, 'sistema.admin': false,
+  }
+}
+
 export const G='#1a5c38',G2='#22744a',G3='#2d8f5e',GB='#f0f7f3',GD='#c3ddd0'
-export const GOLD='#c9a227',GOLDD='#a07800',NAVY='#1a3a6e',NAVYD='#0d2a4a'
+export const GOLD='#c9a227',GOLDD='#a07800',NAVY='#0F1E3A',NAVYD='#0a1628'
+export const GREEN_CHECK='#166534'
+
+// Status de usuário
+export const USER_STATUS = {
+  convite_enviado: { label: 'Convite enviado', cor: '#f59e0b', bg: '#fffbeb' },
+  aguardando_ativacao: { label: 'Aguardando ativação', cor: '#3b82f6', bg: '#eff6ff' },
+  ativo: { label: 'Ativo', cor: '#10b981', bg: '#f0fdf4' },
+  bloqueado: { label: 'Bloqueado', cor: '#ef4444', bg: '#fef2f2' }
+}
