@@ -152,8 +152,6 @@ export async function updateUser(data: UpdateUserRequest): Promise<{ success: bo
     if (data.perfil) {
       await supabase.rpc('regenerate_permissions', {
         p_user_id: data.userId
-      }).catch(() => {
-        // Continua se falhar
       })
     }
 
@@ -288,11 +286,8 @@ async function sendInviteEmail(email: string, nome: string): Promise<void> {
   try {
     const supabase = await createClient()
 
-    await supabase.auth.admin.sendRawSMTPEmail({
-      to: email,
-      subject: 'Você foi convidado para o SIGCOMP',
-      html: generateInviteEmail(nome)
-    })
+    // envio de email desativado temporariamente
+console.log('Convite criado para:', email)
   } catch (error) {
     console.error('Erro ao enviar email:', error)
     // Continua mesmo se falhar
@@ -406,3 +401,5 @@ export async function enableUser(userId: string): Promise<{ success: boolean; er
     return { success: false, error: String(error) }
   }
 }
+
+

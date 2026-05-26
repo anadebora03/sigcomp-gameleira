@@ -69,7 +69,7 @@ export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, on
 
       {/* Nav */}
       <nav style={{ flex:1, padding:'9px 7px', display:'flex', flexDirection:'column', gap:2, overflowY:'auto' }}>
-        {navVisivel.map(({ id, l, icon, badge }) => {
+        {navVisivel.map(({ id, l, icon, badge }: any) => {
           const active = page === id
           return (
             <button key={id} onClick={() => setPage(id as PageId)}

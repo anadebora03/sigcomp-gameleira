@@ -118,7 +118,7 @@ function OficioDetail({o,setOficios,onClose,onEdit}:any){
           </div>
           <DropZoneUpload onFiles={addFiles} uploading={uploaDet} erros={errosDet}/>
           {anx.length===0&&<p style={{textAlign:'center',color:'var(--muted)',fontSize:12,padding:16}}>Nenhum documento.</p>}
-          {anx.map((a:any)=><ARow key={a.id} a={a} onDelete={async(id:string)=>{const arq=anx.find((x:any)=>x.id===id);if(arq?.caminho)await deleteArquivo(arq as any);delA(id)}}/>)}
+          {anx.map((a:any)=><ARow key={a.id} a={a} onDelete={async(id:string)=>{const arq=anx.find((x:any)=>x.id===id);if(arq?.caminho)await deleteArquivo(arq as any);delA(Number(id))}}/>)}
         </div>
       )}
       {tab==='hist'&&(

@@ -12,7 +12,7 @@ import {td,fD,fR,fKB,fmtM,nPl} from '@/utils/formatters'
 
 
 function PlForm({ini,pls,onSave,onClose}:any){
-  const{uploadFiles:upFiles,uploading:upLoading,erros:upErros}=useUpload({modulo:'processos',vinculo:ini?.numero||'novo',secretaria_id:1})
+  const{uploadFiles:upFiles,uploading:uploading,erros:upErros}=useUpload({modulo:'processos',vinculo:ini?.numero||'novo',secretaria_id:1})
   const[f,sf]=useState(ini||{numero:nPl(pls),secretaria_id:1,modalidade:'pregao_eletronico',assunto:'',status:'solicitado',data_abertura:td(),data_prevista:'',responsavel:'',valor_estimado:'',valor_final:'',obs:'',anexos:[],contrato:null})
   const up=(k:string,v:any)=>sf((p:any)=>({...p,[k]:v}))
   function sv(){if(!f.assunto.trim()){alert('Preencha o assunto.');return}onSave({...f,secretaria_id:Number(f.secretaria_id),id:f.id||uid()})}
@@ -54,8 +54,8 @@ function PlForm({ini,pls,onSave,onClose}:any){
         <div style={{background:GB,border:`1.5px solid ${GD}`,borderRadius:10,padding:'10px 13px',display:'flex',alignItems:'center',gap:9,marginBottom:10}}>
           <Ic n="folder" z={15} c={G}/><p style={{fontSize:11,fontWeight:700,color:G}}>Pasta: Processos / {f.numero}</p>
         </div>
-        <DropZoneUpload onFiles={addAnexos} uploading={upLoading} erros={upErros}/>
-        {(f.anexos||[]).map((a:any)=><ARowComp key={a.id} a={a} onDelete={(id:number)=>up('anexos',(f.anexos||[]).filter((x:any)=>x.id!==id))}/>)}
+        <DropZoneUpload onFiles={addAnexos}/>
+        {(f.anexos||[]).map((a:any)=><ARowComp key={a.id} a={a} onDelete={(id:string)=>up('anexos',(f.anexos||[]).filter((x:any)=>x.id!==id))}/>)}
       </div>
       <div style={{display:'flex',gap:10}}><PB onClick={sv} color={NAVY} full>{!ini?'Cadastrar':'Salvar'}</PB><PB onClick={onClose} outline>Cancelar</PB></div>
     </div>
@@ -205,10 +205,10 @@ function ProcessoDetail({proc,setProcessos,onClose,onEdit,onSaveContrato}:any){
           <div style={{background:GB,border:`1.5px solid ${GD}`,borderRadius:10,padding:'10px 13px',display:'flex',alignItems:'center',gap:9}}>
             <Ic n="folder" z={15} c={G}/><p style={{fontSize:11,fontWeight:700,color:G}}>Pasta: Processos / {proc.numero}</p>
           </div>
-          <DropZoneUpload onFiles={addAnexos} uploading={upLoading} erros={upErros}/>
+          <DropZoneUpload onFiles={addAnexos}/>
           {(proc.anexos||[]).length===0&&<p style={{fontSize:12,color:'var(--muted)',textAlign:'center',padding:16}}>Nenhum documento anexado.</p>}
           {(proc.anexos||[]).map((a:any)=>(
-            <ARowComp key={a.id} a={a} onDelete={(id:number)=>setProcessos((prev:any)=>prev.map((x:any)=>x.id===proc.id?{...x,anexos:(x.anexos||[]).filter((an:any)=>an.id!==id)}:x))}/>
+            <ARowComp key={a.id} a={a} onDelete={(id:string)=>setProcessos((prev:any)=>prev.map((x:any)=>x.id===proc.id?{...x,anexos:(x.anexos||[]).filter((an:any)=>an.id!==id)}:x))}/>
           ))}
           <PB onClick={onClose} outline>Fechar</PB>
         </div>
