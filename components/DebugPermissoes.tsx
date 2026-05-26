@@ -15,7 +15,6 @@ export default function DebugPermissoes() {
   const { perfil, permissoes } = usePermissions()
 
   const metadata = user?.user_metadata || {}
-  const rawMetadata = user?.raw_user_meta_data || {}
   const appMetadata = user?.app_metadata || {}
 
   const permissoesList = Object.entries(permissoes)
@@ -76,22 +75,6 @@ export default function DebugPermissoes() {
             fontSize: 9
           }}>
             {JSON.stringify(metadata, null, 2)}
-          </pre>
-        </div>
-
-        {/* Raw User Metadata */}
-        <div>
-          <strong>raw_user_meta_data:</strong>
-          <pre style={{
-            background: '#0a0a0a',
-            padding: '4px 8px',
-            borderRadius: 4,
-            marginTop: 4,
-            overflow: 'auto',
-            maxHeight: 100,
-            fontSize: 9
-          }}>
-            {JSON.stringify(rawMetadata, null, 2)}
           </pre>
         </div>
 

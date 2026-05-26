@@ -1,7 +1,7 @@
 'use client'
 /**
  * usePermissions — verifica permissões do usuário logado
- * Lê de: raw_user_meta_data, user_metadata, app_metadata, email
+ * Lê de: user_metadata, app_metadata, email
  * Retorna funções para validar acesso a funcionalidades específicas
  */
 import { useAuth } from '@/hooks/useAuth'
@@ -30,10 +30,9 @@ export function usePermissions() {
     // Email é diretor automático
     perfil = 'diretor_compras'
   } else {
-    // Procurar em user_metadata/app_metadata
+    // Procurar em user_metadata/app_metadata (disponíveis no frontend)
     perfil = (user?.user_metadata?.perfil as string) || 
              (user?.app_metadata?.perfil as string) ||
-             (user?.raw_user_meta_data?.perfil as string) ||
              'visualizador'
     
     // Normalizar variações do nome do perfil
@@ -47,13 +46,11 @@ export function usePermissions() {
   
   let permissoes: Record<string, boolean> = {}
   
-  // Procurar em múltiplas localizações
+  // Procurar em múltiplas localizações (disponíveis no frontend)
   if (user?.user_metadata?.permissoes) {
     permissoes = user.user_metadata.permissoes as Record<string, boolean>
   } else if (user?.app_metadata?.permissoes) {
     permissoes = user.app_metadata.permissoes as Record<string, boolean>
-  } else if ((user?.raw_user_meta_data as any)?.permissoes) {
-    permissoes = (user?.raw_user_meta_data as any).permissoes as Record<string, boolean>
   }
   
   // Se não achou, usar padrão do perfil
