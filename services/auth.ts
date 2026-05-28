@@ -42,6 +42,8 @@ export interface UserData {
   id: string
   email: string
   nome: string
+  nome_completo?: string
+  display_name?: string
   cargo?: string
   perfil: string
   permissoes?: Record<string, Record<string, boolean>>
@@ -147,15 +149,44 @@ export async function getUser(userId: string): Promise<{ success: boolean; data?
 
     const { data, error } = await supabase
       .from('usuarios')
-      .select('*')
+      .select('id,email,nome,nome_completo,display_name,cargo,perfil,permissoes,status')
       .eq('id', userId)
       .single()
 
-    if (error) {
-      return { success: false, error: error.message }
+    if (error && !data) {
+      console.warn('[auth] usuário não encontrado em usuarios:', error.message)
     }
 
-    return { success: true, data }
+    if (data) {
+      return { success: true, data }
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('perfis')
+      .select('id,nome,nome_completo,display_name,cargo,perfil')
+      .eq('id', userId)
+      .single()
+
+    if (profileError) {
+      return { success: false, error: profileError.message }
+    }
+
+    if (profile) {
+      return {
+        success: true,
+        data: {
+          id: profile.id,
+          email: '',
+          nome: profile.nome || profile.nome_completo || profile.display_name || '',
+          nome_completo: profile.nome_completo,
+          display_name: profile.display_name,
+          cargo: profile.cargo,
+          perfil: profile.perfil,
+        }
+      }
+    }
+
+    return { success: false, error: 'Usuário não encontrado' }
   } catch (error) {
     return { success: false, error: String(error) }
   }

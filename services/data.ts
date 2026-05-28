@@ -178,30 +178,30 @@ export async function deleteProcesso(id: number): Promise<{ success: boolean; er
 
 export async function listPesquisas(): Promise<{ success: boolean; data?: Pesquisa[]; error?: string }> {
   try {
-    console.log('[data] carregando pesquisas do Supabase')
+    console.log('[data] carregando pesquisas de preço do Supabase')
     const supabase = client()
-    const { data, error } = await supabase.from('pesquisas').select('*').order('id', { ascending: false })
+    const { data, error } = await supabase.from('pesquisas_preco').select('*').order('id', { ascending: false })
     if (error) {
-      console.error('[data] erro ao carregar pesquisas:', error.message)
+      console.error('[data] erro ao carregar pesquisas de preço:', error.message)
       return { success: false, error: error.message }
     }
-    console.log('[data] pesquisas carregadas com sucesso:', data?.length || 0)
+    console.log('[data] pesquisas de preço carregadas com sucesso:', data?.length || 0)
     return { success: true, data: data || [] }
   } catch (err) {
-    console.error('[data] erro ao carregar pesquisas:', err)
+    console.error('[data] erro ao carregar pesquisas de preço:', err)
     return { success: false, error: String(err) }
   }
 }
 
 export async function savePesquisa(pesquisa: Pesquisa, isNew: boolean): Promise<{ success: boolean; data?: Pesquisa; error?: string }> {
   try {
-    console.log('[data] salvando pesquisa no Supabase:', pesquisa.numero, '(isNew=' + isNew + ')')
+    console.log('[data] salvando pesquisa de preço no Supabase:', pesquisa.numero, '(isNew=' + isNew + ')')
     const supabase = client()
     const { id, ...payload } = pesquisa as any
 
     if (isNew) {
       const { data, error } = await supabase
-        .from('pesquisas')
+        .from('pesquisas_preco')
         .insert({
           ...payload,
           fornecedores: pesquisa.fornecedores || [],
@@ -211,16 +211,16 @@ export async function savePesquisa(pesquisa: Pesquisa, isNew: boolean): Promise<
         .single()
 
       if (error || !data) {
-        console.error('[data] erro ao criar pesquisa:', error?.message || 'dados nulos')
-        return { success: false, error: error?.message || 'Erro ao criar pesquisa' }
+        console.error('[data] erro ao criar pesquisa de preço:', error?.message || 'dados nulos')
+        return { success: false, error: error?.message || 'Erro ao criar pesquisa de preço' }
       }
 
-      console.log('[data] pesquisa criada com sucesso:', data.numero)
+      console.log('[data] pesquisa de preço criada com sucesso:', data.numero)
       return { success: true, data }
     }
 
     const { data, error } = await supabase
-      .from('pesquisas')
+      .from('pesquisas_preco')
       .update({
         ...payload,
         fornecedores: pesquisa.fornecedores || [],
@@ -231,31 +231,31 @@ export async function savePesquisa(pesquisa: Pesquisa, isNew: boolean): Promise<
       .single()
 
     if (error || !data) {
-      console.error('[data] erro ao atualizar pesquisa:', error?.message || 'dados nulos')
-      return { success: false, error: error?.message || 'Erro ao atualizar pesquisa' }
+      console.error('[data] erro ao atualizar pesquisa de preço:', error?.message || 'dados nulos')
+      return { success: false, error: error?.message || 'Erro ao atualizar pesquisa de preço' }
     }
 
-    console.log('[data] pesquisa atualizada com sucesso:', data.numero)
+    console.log('[data] pesquisa de preço atualizada com sucesso:', data.numero)
     return { success: true, data }
   } catch (err) {
-    console.error('[data] erro ao salvar pesquisa:', err)
+    console.error('[data] erro ao salvar pesquisa de preço:', err)
     return { success: false, error: String(err) }
   }
 }
 
 export async function deletePesquisa(id: number): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log('[data] deletando pesquisa:', id)
+    console.log('[data] deletando pesquisa de preço:', id)
     const supabase = client()
-    const { error } = await supabase.from('pesquisas').delete().eq('id', id)
+    const { error } = await supabase.from('pesquisas_preco').delete().eq('id', id)
     if (error) {
-      console.error('[data] erro ao deletar pesquisa:', error.message)
+      console.error('[data] erro ao deletar pesquisa de preço:', error.message)
       return { success: false, error: error.message }
     }
-    console.log('[data] pesquisa deletada com sucesso:', id)
+    console.log('[data] pesquisa de preço deletada com sucesso:', id)
     return { success: true }
   } catch (err) {
-    console.error('[data] erro ao deletar pesquisa:', err)
+    console.error('[data] erro ao deletar pesquisa de preço:', err)
     return { success: false, error: String(err) }
   }
 }
