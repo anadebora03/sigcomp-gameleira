@@ -108,7 +108,7 @@ export default function App() {
         <Header page={page} mob={mob} dark={dark} setDark={setDark} sideOpen={sideOpen} onOpenSide={() => setSideOpen(true)} onOpenMob={() => setMobMenu(true)} onLogout={handleLogout} userEmail={user.email}/>
         <main style={{ flex:1, overflowY:'auto', padding:mob?'12px 11px':'18px 22px', paddingBottom:mob?74:18 }}>
           <div style={{ animation:'fadeUp .3s ease both', maxWidth:1400, margin:'0 auto' }}>
-            {page==='dashboard'   && <Dashboard   oficios={store.oficios} processos={store.processos} pesquisas={store.pesquisas}/>}
+            {page==='dashboard'   && <Dashboard   user={user} oficios={store.oficios} processos={store.processos} pesquisas={store.pesquisas}/>}
             {page==='oficios'     && <OficiosPage  {...pp}/>}
             {page==='processos'   && <ProcessosPage {...pp}/>}
             {page==='pesquisas'   && <PesquisasPage {...pp}/>}

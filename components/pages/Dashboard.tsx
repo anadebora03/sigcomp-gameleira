@@ -42,8 +42,24 @@ function ClockBar(){
   )
 }
 
-export default function Dashboard({oficios,processos,pesquisas}:any){
+export default function Dashboard({user,oficios,processos,pesquisas}:any){
   const mob=useMob()
+  const now=new Date()
+  
+  // Extrair nome do usuário
+  let nomeUsuario='Usuário'
+  if(user?.user_metadata?.nome){
+    nomeUsuario=user.user_metadata.nome.split(' ')[0]
+  }else if(user?.email){
+    nomeUsuario=user.email.split('@')[0]
+  }
+  
+  // Determinar período do dia
+  const hora=now.getHours()
+  let saudacao='Bom dia'
+  if(hora>=12&&hora<18)saudacao='Boa tarde'
+  else if(hora>=18||hora<6)saudacao='Boa noite'
+  
   const at=oficios.filter((o:any)=>isOv(o.prazo)&&!['concluido','arquivado'].includes(o.status))
   const venc=oficios.filter((o:any)=>isSn(o.prazo)&&!['concluido','arquivado'].includes(o.status))
   const cards=[
@@ -58,6 +74,13 @@ export default function Dashboard({oficios,processos,pesquisas}:any){
   const mx=Math.max(...bySec.map((s:any)=>s.n),1)
   return(
     <div style={{display:'flex',flexDirection:'column',gap:18}}>
+      <div style={{background:'linear-gradient(135deg,#1a5c38 0%,#2d8f5e 100%)',borderRadius:14,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div>
+          <p style={{fontSize:13,color:'rgba(255,255,255,.8)',fontWeight:600,margin:'0 0 4px'}}>Bem-vindo ao SIGCOMP</p>
+          <p style={{fontSize:24,fontWeight:900,color:'#fff',margin:0,lineHeight:1}}>{saudacao}, {nomeUsuario}!</p>
+        </div>
+        <Ic n="wave" z={32} c="rgba(255,255,255,.8)"/>
+      </div>
       <ClockBar/>
       <div style={{display:'grid',gridTemplateColumns:mob?'1fr 1fr':'repeat(6,1fr)',gap:12}}>
         {cards.map((c,i)=>(
