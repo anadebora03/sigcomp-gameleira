@@ -50,73 +50,63 @@ export interface UserData {
 /**
  * Cria um novo usuário no Supabase Auth e na tabela usuarios
  * Sistema de sincronização automática:
- * 1. Cria usuário no Supabase Auth com senha temporária
+ * 1. Cria usuário no Supabase Auth via convite oficial do Supabase
  * 2. Insere na tabela `usuarios` (trigger sincroniza para auth.users automaticamente)
  * 3. Trigger regenera permissões baseado no perfil
- * 4. Envia e-mail de convite
+ * 4. Link de convite redireciona para /nova-senha
  */
-export async function createUserWithInvite(data: CreateUserRequest): Promise<CreateUserResponse> {
-  try {
-    const supabase = await createClient()
+ export async function createUserWithInvite(data: CreateUserRequest): Promise<CreateUserResponse> {
+   try {
+     const supabase = await createClient()
 
-    // 1. Gerar senha temporária segura
-    const senhaTemporaria = Math.random().toString(36).slice(-12)
+     // 1. Criar convite oficial no Supabase Auth
+     const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(data.email, {
+       redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/nova-senha`,
+     })
 
-    // 2. Criar usuário no Supabase Auth (sem metadata ainda)
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: data.email,
-      password: senhaTemporaria,
-      email_confirm: false,
-    })
+     if (authError || !authData.user) {
+       return {
+         success: false,
+         message: 'Erro ao criar usuário',
+         error: authError?.message || 'Erro desconhecido'
+       }
+     }
 
-    if (authError || !authData.user) {
-      return {
-        success: false,
-        message: 'Erro ao criar usuário',
-        error: authError?.message || 'Erro desconhecido'
-      }
-    }
+     const userId = authData.user.id
 
-    const userId = authData.user.id
+     // 2. Inserir na tabela `usuarios` (trigger fará o resto)
+     const { error: insertError } = await supabase
+       .from('usuarios')
+       .insert({
+         id: userId,
+         email: data.email,
+         nome: data.nome,
+         cargo: data.cargo,
+         perfil: data.perfil,
+         status: 'convite_enviado',
+       })
 
-    // 3. Inserir na tabela `usuarios` (trigger fará o resto)
-    const { error: insertError } = await supabase
-      .from('usuarios')
-      .insert({
-        id: userId,
-        email: data.email,
-        nome: data.nome,
-        cargo: data.cargo,
-        perfil: data.perfil,
-        status: 'convite_enviado',
-        // Permissões serão regeneradas automaticamente pelo trigger
-      })
+     if (insertError) {
+       await supabase.auth.admin.deleteUser(userId).catch(() => {})
+       return {
+         success: false,
+         message: 'Erro ao armazenar usuário',
+         error: insertError.message
+       }
+     }
 
-    if (insertError) {
-      return {
-        success: false,
-        message: 'Erro ao armazenar usuário',
-        error: insertError.message
-      }
-    }
-
-    // 4. Enviar e-mail de convite
-    await sendInviteEmail(data.email, data.nome).catch(() => {
-      // Continua mesmo se email falhar
-    })
-
-    return {
-      success: true,
-      message: 'Usuário criado e convite enviado',
-      userId
-    }
-  } catch (error) {
-    return {
-      success: false,
-      message: 'Erro ao criar usuário',
-      error: String(error)
-    }
-  }
+     return {
+       success: true,
+       message: 'Convite enviado por email com sucesso.',
+       userId
+     }
+   } catch (error) {
+     return {
+       success: false,
+       message: 'Erro ao criar usuário',
+       error: String(error)
+     }
+   }
 }
 
 /**
@@ -276,21 +266,6 @@ export async function getUsersByProfile(
     return { success: true, data }
   } catch (error) {
     return { success: false, error: String(error) }
-  }
-}
-
-/**
- * Enviar e-mail de convite
- */
-async function sendInviteEmail(email: string, nome: string): Promise<void> {
-  try {
-    const supabase = await createClient()
-
-    // envio de email desativado temporariamente
-console.log('Convite criado para:', email)
-  } catch (error) {
-    console.error('Erro ao enviar email:', error)
-    // Continua mesmo se falhar
   }
 }
 

@@ -7,14 +7,12 @@ import {PERF,PCOR,PERFIS_PERMISSOES,USER_STATUS} from '@/lib/constants'
 import {uid} from '@/utils/helpers'
 
 function UFrm({ini,onSave,onClose}:any){
-  const[f,sf]=useState(ini||{nome:'',cargo:'',email:'',perfil:'setor_compras',ativo:true,avatar:'',status:'convite_enviado',senha:'',senha2:'',permissoes:{...(PERFIS_PERMISSOES.setor_compras||{})}})
+  const[f,sf]=useState(ini||{nome:'',cargo:'',email:'',perfil:'setor_compras',ativo:true,avatar:'',status:'convite_enviado',permissoes:{...(PERFIS_PERMISSOES.setor_compras||{})}})
   const up=(k:string,v:any)=>sf((p:any)=>({...p,[k]:v}))
   const ref=useRef<HTMLInputElement>(null)
   function pickAv(e:any){const fl=e.target.files[0];if(!fl)return;const r=new FileReader();r.onload=ev=>up('avatar',(ev.target as any).result);r.readAsDataURL(fl)}
   function sv(){
     if(!f.nome.trim()||!f.email.trim()){alert('Preencha nome e email.');return}
-    if(!ini&&(!f.senha||f.senha.length<6)){alert('Senha provisória precisa ter no mínimo 6 caracteres.');return}
-    if(!ini&&f.senha!==f.senha2){alert('As senhas não conferem.');return}
     onSave({...f,id:f.id||uid()})
   }
   const ini2=f.nome?f.nome.split(' ').slice(0,2).map((n:string)=>n[0]).join('').toUpperCase():'?'
@@ -59,18 +57,6 @@ function UFrm({ini,onSave,onClose}:any){
           <PermissoesSelector permissoes={f.permissoes||{}} onChange={p=>up('permissoes',p)} perfil={f.perfil} onPerfilChange={perf=>up('perfil',perf)}/>
         </div>
       )}
-      {!ini&&(
-        <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'12px 14px'}}>
-          <p style={{fontSize:10,fontWeight:800,color:'#b45309',textTransform:'uppercase',marginBottom:10}}>
-            Senha Provisória
-          </p>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-            <Fld label="Senha Provisória" req><input type="password" style={IS} value={f.senha} placeholder="Mínimo 6 caracteres" onFocus={oF} onBlur={oB} onChange={e=>up('senha',e.target.value)}/></Fld>
-            <Fld label="Confirmar Senha" req><input type="password" style={IS} value={f.senha2} placeholder="Repita a senha" onFocus={oF} onBlur={oB} onChange={e=>up('senha2',e.target.value)}/></Fld>
-          </div>
-          <p style={{fontSize:10,color:'#92400e',marginTop:8}}>O funcionário deverá alterar a senha no primeiro acesso. Um e-mail de convite será enviado automaticamente.</p>
-        </div>
-      )}
       <div style={{display:'flex',gap:10}}><PB onClick={sv} full>{!ini?'Criar e Enviar Convite':'Salvar'}</PB><PB onClick={onClose} outline>Cancelar</PB></div>
     </div>
   )
@@ -79,7 +65,7 @@ function UFrm({ini,onSave,onClose}:any){
 export default function UsuariosPage({usuarios,saveUsuario,deleteUsuario,toast}:any){
   const[modal,setModal]=useState<any>(null)
   const[sel,setSel]=useState<any>(null)
-  function save(data:any){saveUsuario(data,modal==='new');toast(modal==='new'?'Criado e convite enviado!':'Atualizado!','success');setModal(null);setSel(null)}
+  function save(data:any){saveUsuario(data,modal==='new');toast(modal==='new'?'Convite enviado por email com sucesso.':'Atualizado!','success');setModal(null);setSel(null)}
   function del(id:number){if(!confirm('Excluir usuário?'))return;deleteUsuario(id);toast('Excluído.','info')}
   return(
     <div style={{display:'flex',flexDirection:'column',gap:16}}>
