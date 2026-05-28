@@ -1,60 +1,180 @@
 'use client'
-import {useState,useCallback} from 'react'
-import {INIT_OF,INIT_PL,INIT_PQ,INIT_US,INIT_LG} from '@/lib/initialData'
-import type {Oficio,Processo,Pesquisa,Usuario,Log} from '@/lib/types'
-import {uid} from '@/utils/helpers'
-import {td} from '@/utils/formatters'
+import { useState, useCallback, useEffect } from 'react'
+import { SECS } from '@/lib/constants'
+import type { Oficio, Processo, Pesquisa, Usuario, Log, Secretaria } from '@/lib/types'
+import { createLog, listLogs, listOficios, saveOficio as persistOficio, deleteOficio as removeOficio, listProcessos, saveProcesso as persistProcesso, deleteProcesso as removeProcesso, listPesquisas, savePesquisa as persistPesquisa, deletePesquisa as removePesquisa, listSecretarias } from '@/services/data'
 
-export function useStore(){
-  const[oficios,setOficios]=useState<Oficio[]>(INIT_OF)
-  const[processos,setProcessos]=useState<Processo[]>(INIT_PL)
-  const[pesquisas,setPesquisas]=useState<Pesquisa[]>(INIT_PQ)
-  const[usuarios,setUsuarios]=useState<Usuario[]>(INIT_US)
-  const[logs,setLogs]=useState<Log[]>(INIT_LG)
+export function useStore() {
+  const [oficios, setOficios] = useState<Oficio[]>([])
+  const [processos, setProcessos] = useState<Processo[]>([])
+  const [pesquisas, setPesquisas] = useState<Pesquisa[]>([])
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  const [logs, setLogs] = useState<Log[]>([])
+  const [secretarias, setSecretarias] = useState<Secretaria[]>(SECS)
+  const [error, setError] = useState<string | null>(null)
 
-  const addLog=useCallback((descricao:string,modulo:string,tipo='update')=>{
-    setLogs(p=>[...p,{id:uid(),usuario:'Você',modulo,tipo,descricao,data:new Date().toISOString()}])
-  },[])
+  useEffect(() => {
+    async function loadData() {
+      setError(null)
 
-  const saveOficio=useCallback((data:Oficio,isNew:boolean)=>{
-    setOficios(p=>isNew?[data,...p]:p.map(o=>o.id===data.id?data:o))
-    addLog((isNew?'Criou ':'Atualizou ')+data.numero,'Ofícios',isNew?'create':'update')
-  },[addLog])
+      const [oficiosRes, processosRes, pesquisasRes, logsRes, secretariasRes] = await Promise.all([
+        listOficios(),
+        listProcessos(),
+        listPesquisas(),
+        listLogs(),
+        listSecretarias(),
+      ])
 
-  const deleteOficio=useCallback((id:number)=>{
-    setOficios(p=>{const o=p.find(x=>x.id===id);addLog('Excluiu '+(o?.numero||''),'Ofícios','delete');return p.filter(x=>x.id!==id)})
-  },[addLog])
+      if (oficiosRes.success && oficiosRes.data) {
+        setOficios(oficiosRes.data)
+      } else {
+        setError(oficiosRes.error || 'Erro ao carregar ofícios')
+      }
 
-  const saveProcesso=useCallback((data:Processo,isNew:boolean)=>{
-    setProcessos(p=>isNew?[data,...p]:p.map(x=>x.id===data.id?data:x))
-    addLog((isNew?'Criou ':'Atualizou ')+data.numero,'Processos',isNew?'create':'update')
-  },[addLog])
+      if (processosRes.success && processosRes.data) {
+        setProcessos(processosRes.data)
+      } else {
+        setError(processosRes.error || 'Erro ao carregar processos')
+      }
 
-  const deleteProcesso=useCallback((id:number)=>{
-    setProcessos(p=>{const x=p.find(o=>o.id===id);addLog('Excluiu '+(x?.numero||''),'Processos','delete');return p.filter(o=>o.id!==id)})
-  },[addLog])
+      if (pesquisasRes.success && pesquisasRes.data) {
+        setPesquisas(pesquisasRes.data)
+      } else {
+        setError(pesquisasRes.error || 'Erro ao carregar pesquisas')
+      }
 
-  const savePesquisa=useCallback((data:Pesquisa,isNew:boolean)=>{
-    setPesquisas(p=>isNew?[data,...p]:p.map(x=>x.id===data.id?data:x))
-    addLog((isNew?'Criou ':'Atualizou ')+data.numero,'Pesquisas',isNew?'create':'update')
-  },[addLog])
+      if (logsRes.success && logsRes.data) {
+        setLogs(logsRes.data)
+      } else {
+        setError(logsRes.error || 'Erro ao carregar logs')
+      }
 
-  const deletePesquisa=useCallback((id:number)=>{
-    setPesquisas(p=>{addLog('Excluiu pesquisa','Pesquisas','delete');return p.filter(x=>x.id!==id)})
-  },[addLog])
+      if (secretariasRes.success && secretariasRes.data && secretariasRes.data.length > 0) {
+        setSecretarias(secretariasRes.data)
+      }
+    }
 
-  const saveUsuario=useCallback((data:Usuario,isNew:boolean)=>{
-    setUsuarios(p=>isNew?[data,...p]:p.map(u=>u.id===data.id?data:u))
-  },[])
+    loadData().catch(err => setError(String(err)))
+  }, [])
 
-  const deleteUsuario=useCallback((id:number)=>{
-    setUsuarios(p=>p.filter(x=>x.id!==id))
-  },[])
+  const saveOficio = useCallback(async (data: Oficio, isNew: boolean) => {
+    setError(null)
+    const result = await persistOficio(data, isNew)
+    if (!result.success) {
+      setError(result.error || 'Erro ao salvar ofício')
+      return result
+    }
 
-  return{
-    oficios,setOficios,processos,setProcessos,
-    pesquisas,setPesquisas,usuarios,setUsuarios,logs,
-    addLog,saveOficio,deleteOficio,saveProcesso,deleteProcesso,
-    savePesquisa,deletePesquisa,saveUsuario,deleteUsuario,
+    setOficios(prev => isNew ? [result.data!, ...prev] : prev.map(o => o.id === result.data!.id ? result.data! : o))
+
+    const log = await createLog({ usuario: 'Você', modulo: 'Ofícios', tipo: isNew ? 'create' : 'update', descricao: `${isNew ? 'Criou' : 'Atualizou'} ${result.data!.numero}`, data: new Date().toISOString() })
+    if (log.success && log.data) {
+      setLogs(prev => [log.data!, ...prev])
+    }
+
+    return result
+  }, [])
+
+  const deleteOficio = useCallback(async (id: number) => {
+    setError(null)
+    const oficio = oficios.find(o => o.id === id)
+    const result = await removeOficio(id)
+    if (!result.success) {
+      setError(result.error || 'Erro ao excluir ofício')
+      return result
+    }
+
+    setOficios(prev => prev.filter(o => o.id !== id))
+    if (oficio) {
+      const log = await createLog({ usuario: 'Você', modulo: 'Ofícios', tipo: 'delete', descricao: `Excluiu ${oficio.numero}`, data: new Date().toISOString() })
+      if (log.success && log.data) setLogs(prev => [log.data!, ...prev])
+    }
+
+    return result
+  }, [oficios])
+
+  const saveProcesso = useCallback(async (data: Processo, isNew: boolean) => {
+    setError(null)
+    const result = await persistProcesso(data, isNew)
+    if (!result.success) {
+      setError(result.error || 'Erro ao salvar processo')
+      return result
+    }
+
+    setProcessos(prev => isNew ? [result.data!, ...prev] : prev.map(p => p.id === result.data!.id ? result.data! : p))
+
+    const log = await createLog({ usuario: 'Você', modulo: 'Processos', tipo: isNew ? 'create' : 'update', descricao: `${isNew ? 'Criou' : 'Atualizou'} ${result.data!.numero}`, data: new Date().toISOString() })
+    if (log.success && log.data) setLogs(prev => [log.data!, ...prev])
+
+    return result
+  }, [])
+
+  const deleteProcesso = useCallback(async (id: number) => {
+    setError(null)
+    const processo = processos.find(p => p.id === id)
+    const result = await removeProcesso(id)
+    if (!result.success) {
+      setError(result.error || 'Erro ao excluir processo')
+      return result
+    }
+
+    setProcessos(prev => prev.filter(p => p.id !== id))
+    if (processo) {
+      const log = await createLog({ usuario: 'Você', modulo: 'Processos', tipo: 'delete', descricao: `Excluiu ${processo.numero}`, data: new Date().toISOString() })
+      if (log.success && log.data) setLogs(prev => [log.data!, ...prev])
+    }
+
+    return result
+  }, [processos])
+
+  const savePesquisa = useCallback(async (data: Pesquisa, isNew: boolean) => {
+    setError(null)
+    const result = await persistPesquisa(data, isNew)
+    if (!result.success) {
+      setError(result.error || 'Erro ao salvar pesquisa')
+      return result
+    }
+
+    setPesquisas(prev => isNew ? [result.data!, ...prev] : prev.map(p => p.id === result.data!.id ? result.data! : p))
+
+    const log = await createLog({ usuario: 'Você', modulo: 'Pesquisas', tipo: isNew ? 'create' : 'update', descricao: `${isNew ? 'Criou' : 'Atualizou'} ${result.data!.numero}`, data: new Date().toISOString() })
+    if (log.success && log.data) setLogs(prev => [log.data!, ...prev])
+
+    return result
+  }, [])
+
+  const deletePesquisa = useCallback(async (id: number) => {
+    setError(null)
+    const result = await removePesquisa(id)
+    if (!result.success) {
+      setError(result.error || 'Erro ao excluir pesquisa')
+      return result
+    }
+
+    setPesquisas(prev => prev.filter(p => p.id !== id))
+    const log = await createLog({ usuario: 'Você', modulo: 'Pesquisas', tipo: 'delete', descricao: 'Excluiu pesquisa', data: new Date().toISOString() })
+    if (log.success && log.data) setLogs(prev => [log.data!, ...prev])
+
+    return result
+  }, [])
+
+  return {
+    oficios,
+    setOficios,
+    processos,
+    setProcessos,
+    pesquisas,
+    setPesquisas,
+    usuarios,
+    setUsuarios,
+    logs,
+    secretarias,
+    error,
+    saveOficio,
+    deleteOficio,
+    saveProcesso,
+    deleteProcesso,
+    savePesquisa,
+    deletePesquisa,
   }
 }

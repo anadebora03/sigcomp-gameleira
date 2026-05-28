@@ -71,16 +71,38 @@ function OficioForm({initial,oficios,onSave,onClose}:any){
   )
 }
 
-function OficioDetail({o,setOficios,onClose,onEdit}:any){
+function OficioDetail({o,setOficios,onClose,onEdit,saveOficio}:any){
   const{uploadFiles:uploadDet,uploading:uploaDet,erros:errosDet}=useUpload({modulo:'oficios',vinculo:o.numero,secretaria_id:o.secretaria_id})
   const[tab,setTab]=useState('info')
   const[comment,setCom]=useState('')
   const[coms,setComs]=useState(o.comentarios||[])
   const[anx,setAnx]=useState(o.anexos||[])
   const sec=gS(o.secretaria_id)
-  function sendC(){if(!comment.trim())return;const n={texto:comment,data:td(),usuario:'Você'};setComs((p:any)=>[...p,n]);setOficios((prev:any)=>prev.map((x:any)=>x.id===o.id?{...x,comentarios:[...(x.comentarios||[]),n]}:x));setCom('')}
-  async function addFiles(files:File[]){const n=await uploadDet(files);if(n.length){setAnx((p:any)=>[...p,...n]);setOficios((prev:any)=>prev.map((x:any)=>x.id===o.id?{...x,anexos:[...(x.anexos||[]),...n]}:x))}}
-  function delA(id:number){setAnx((p:any)=>p.filter((a:any)=>a.id!==id));setOficios((prev:any)=>prev.map((x:any)=>x.id===o.id?{...x,anexos:(x.anexos||[]).filter((a:any)=>a.id!==id)}:x))}
+  async function sendC(){
+    if(!comment.trim())return
+    const n={texto:comment,data:td(),usuario:'Você'}
+    const updated = {...o, comentarios:[...(o.comentarios||[]),n], historico:[...(o.historico||[]),{data:td(),acao:'Comentário adicionado',usuario:'Você'}]}
+    setComs((p:any)=>[...p,n])
+    setOficios((prev:any)=>prev.map((x:any)=>x.id===o.id?updated:x))
+    await saveOficio(updated,false)
+    setCom('')
+  }
+  async function addFiles(files:File[]){
+    const n=await uploadDet(files)
+    if(n.length){
+      const updated = {...o, anexos:[...(o.anexos||[]),...n]}
+      setAnx((p:any)=>[...p,...n])
+      setOficios((prev:any)=>prev.map((x:any)=>x.id===o.id?updated:x))
+      await saveOficio(updated,false)
+    }
+  }
+  async function delA(id:number){
+    const updatedAnexos=(o.anexos||[]).filter((a:any)=>a.id!==id)
+    const updated = {...o, anexos: updatedAnexos}
+    setAnx((p:any)=>p.filter((a:any)=>a.id!==id))
+    setOficios((prev:any)=>prev.map((x:any)=>x.id===o.id?updated:x))
+    await saveOficio(updated,false)
+  }
   const TABS=[{id:'info',l:'Detalhes',n:'file'},{id:'anexos',l:`Docs (${anx.length})`,n:'clip'},{id:'hist',l:'Timeline',n:'hist'},{id:'chat',l:`Chat (${coms.length})`,n:'msg'}]
   const over=isOv(o.prazo)&&!['concluido','arquivado'].includes(o.status)
   return(
@@ -232,7 +254,7 @@ export default function OficiosPage({oficios,setOficios,saveOficio,deleteOficio,
         </div>
       </Card>
       {modal==='new'&&<Modal title="Novo Ofício" onClose={()=>setModal(null)} wide><OficioForm oficios={oficios} onSave={save} onClose={()=>setModal(null)}/></Modal>}
-      {modal==='view'&&sel&&<Modal title="Detalhes do Ofício" onClose={()=>setModal(null)} wide><OficioDetail o={sel} setOficios={setOficios} onClose={()=>setModal(null)} onEdit={(o:any)=>{setModal('edit');setSel(o)}}/></Modal>}
+      {modal==='view'&&sel&&<Modal title="Detalhes do Ofício" onClose={()=>setModal(null)} wide><OficioDetail o={sel} setOficios={setOficios} onClose={()=>setModal(null)} onEdit={(o:any)=>{setModal('edit');setSel(o)}} saveOficio={save} /></Modal>}
       {modal==='edit'&&sel&&<Modal title="Editar Ofício" onClose={()=>setModal(null)} wide><OficioForm initial={sel} oficios={oficios} onSave={save} onClose={()=>setModal(null)}/></Modal>}
     </div>
   )

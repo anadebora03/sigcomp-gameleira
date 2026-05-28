@@ -3,10 +3,11 @@ import {Card} from '@/components/ui/atoms'
 import {SECS} from '@/lib/constants'
 import {fR} from '@/utils/formatters'
 
-export default function SecretariasPage({oficios,processos}:any){
+export default function SecretariasPage({oficios,processos,secretarias}:any){
+  const secretariasList = (secretarias && secretarias.length > 0) ? secretarias : SECS
   return(
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14}}>
-      {SECS.map(s=>{
+      {secretariasList.map((s:any)=>{
         const ofs=oficios.filter((o:any)=>o.secretaria_id===s.id)
         const pend=ofs.filter((o:any)=>o.status==='pendente').length
         const conc=ofs.filter((o:any)=>o.status==='concluido').length

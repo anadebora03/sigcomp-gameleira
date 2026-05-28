@@ -62,7 +62,7 @@ function PlForm({ini,pls,onSave,onClose}:any){
   )
 }
 
-function ProcessoDetail({proc,setProcessos,onClose,onEdit,onSaveContrato}:any){
+function ProcessoDetail({proc,setProcessos,onClose,onEdit,onSaveContrato,saveProcesso}:any){
   const{uploadFiles:upDet,uploading:upDetLoad,erros:upDetErr}=useUpload({modulo:'processos',vinculo:proc.numero,secretaria_id:proc.secretaria_id})
   const{uploadFiles:upCont,uploading:upContLoad,erros:upContErr}=useUpload({modulo:'contratos',vinculo:proc.numero,secretaria_id:proc.secretaria_id})
   const[tab,setTab]=useState(proc.contrato&&proc.contrato.empresa?'contrato':'info')
@@ -103,7 +103,14 @@ function ProcessoDetail({proc,setProcessos,onClose,onEdit,onSaveContrato}:any){
     }
   }
   function saveContrato(){if(!f.empresa.trim()){alert('Informe a empresa contratada.');return}const newProc={...proc,contrato:f};onSaveContrato(newProc);setProcessos((prev:any)=>prev.map((x:any)=>x.id===proc.id?newProc:x))}
-  async function addAnexos(files:File[]){const n=await upDet(files);if(n.length)setProcessos((prev:any)=>prev.map((x:any)=>x.id===proc.id?{...x,anexos:[...(x.anexos||[]),...n]}:x))}
+  async function addAnexos(files:File[]){
+    const n=await upDet(files)
+    if(n.length){
+      const updated = {...proc, anexos:[...(proc.anexos||[]),...n]}
+      setProcessos((prev:any)=>prev.map((x:any)=>x.id===proc.id?updated:x))
+      await saveProcesso(updated,false)
+    }
+  }
   const sec=gS(proc.secretaria_id)
   const st=gT(SPL,proc.status)
   const TABS=[{id:'info',l:'Detalhes',n:'file'},{id:'contrato',l:'Contrato',n:'clip'},{id:'anexos',l:`Documentos (${(proc.anexos||[]).length})`,n:'ul'}]
@@ -293,7 +300,7 @@ export default function ProcessosPage({processos,setProcessos,saveProcesso,delet
         </div>
       </Card>
       {(modal==='new'||modal==='edit')&&<Modal title={modal==='new'?'Novo Processo':'Editar Processo'} onClose={()=>setModal(null)} wide><PlForm ini={modal==='edit'?sel:null} pls={processos} onSave={save} onClose={()=>setModal(null)}/></Modal>}
-      {detProc&&<Modal title={`Processo ${detProc.numero}`} onClose={()=>setDetProc(null)} wide><ProcessoDetail proc={detProc} setProcessos={setProcessos} onClose={()=>setDetProc(null)} onEdit={(p:any)=>{setDetProc(null);setSel(p);setModal('edit')}} onSaveContrato={saveContrato}/></Modal>}
+      {detProc&&<Modal title={`Processo ${detProc.numero}`} onClose={()=>setDetProc(null)} wide><ProcessoDetail proc={detProc} setProcessos={setProcessos} onClose={()=>setDetProc(null)} onEdit={(p:any)=>{setDetProc(null);setSel(p);setModal('edit')}} onSaveContrato={saveContrato} saveProcesso={saveProcesso}/></Modal>}
     </div>
   )
 }

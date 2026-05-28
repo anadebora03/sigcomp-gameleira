@@ -1,10 +1,11 @@
 'use client'
-import {useState,useRef} from 'react'
-import {Ic,IB,PB,Card,Fld,IS,oF,oB,G,NAVY} from '@/components/ui/atoms'
+import { useState, useRef } from 'react'
+import { Ic, IB, PB, Card, Fld, IS, oF, oB, G, NAVY } from '@/components/ui/atoms'
 import Modal from '@/components/ui/Modal'
 import PermissoesSelector from '@/components/PermissoesSelector'
-import {PERF,PCOR,PERFIS_PERMISSOES,USER_STATUS} from '@/lib/constants'
-import {uid} from '@/utils/helpers'
+import { PERF, PCOR, PERFIS_PERMISSOES, USER_STATUS } from '@/lib/constants'
+import { uid } from '@/utils/helpers'
+import { useSupabaseUsers } from '@/hooks/useSupabaseUsers'
 
 function UFrm({ini,onSave,onClose}:any){
   const[f,sf]=useState(ini||{nome:'',cargo:'',email:'',perfil:'setor_compras',ativo:true,avatar:'',status:'convite_enviado',permissoes:{...(PERFIS_PERMISSOES.setor_compras||{})}})
@@ -62,13 +63,53 @@ function UFrm({ini,onSave,onClose}:any){
   )
 }
 
-export default function UsuariosPage({usuarios,saveUsuario,deleteUsuario,toast}:any){
-  const[modal,setModal]=useState<any>(null)
-  const[sel,setSel]=useState<any>(null)
-  function save(data:any){saveUsuario(data,modal==='new');toast(modal==='new'?'Convite enviado por email com sucesso.':'Atualizado!','success');setModal(null);setSel(null)}
-  function del(id:number){if(!confirm('Excluir usuário?'))return;deleteUsuario(id);toast('Excluído.','info')}
+export default function UsuariosPage({ toast }: any){
+  const { usuarios, loading, error, createUser, editUser, deleteUser } = useSupabaseUsers()
+  const [modal, setModal] = useState<any>(null)
+  const [sel, setSel] = useState<any>(null)
+
+  async function save(data:any) {
+    if (!data.id) {
+      const result = await createUser(data)
+      if (result.success) {
+        toast('Convite enviado com sucesso','success')
+        setModal(null)
+        setSel(null)
+      } else {
+        toast(result.error || 'Erro ao enviar convite','error')
+      }
+      return
+    }
+
+    const result = await editUser(data.id, {
+      nome: data.nome,
+      cargo: data.cargo,
+      perfil: data.perfil,
+      status: data.status,
+    })
+    if (result.success) {
+      toast('Atualizado!','success')
+      setModal(null)
+      setSel(null)
+    } else {
+      toast(result.error || 'Erro ao atualizar usuário','error')
+    }
+  }
+
+  async function del(id:string){
+    if (!confirm('Excluir usuário?')) return
+    const result = await deleteUser(id)
+    if (result.success) {
+      toast('Excluído.','info')
+    } else {
+      toast(result.error || 'Erro ao excluir usuário','error')
+    }
+  }
+
   return(
     <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      {loading && <p style={{color: NAVY, fontWeight:700}}>Carregando usuários...</p>}
+      {error && <p style={{color: '#dc2626', fontWeight:700}}>Erro: {error}</p>}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <p style={{fontSize:13,fontWeight:700,color:'var(--muted)'}}>{usuarios.length} usuário(s)</p>
         <button onClick={()=>{setSel(null);setModal('new')}} style={{display:'flex',alignItems:'center',gap:7,background:G,color:'#fff',fontWeight:800,padding:'9px 15px',borderRadius:9,border:'none',cursor:'pointer',fontSize:13,fontFamily:'inherit'}}>

@@ -8,7 +8,7 @@
  * - Permissões são regeneradas automaticamente baseado no perfil
  */
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/client'
 
 // ============================================================
 // INTERFACES
@@ -59,57 +59,33 @@ export interface UserData {
  */
  export async function createUserWithInvite(data: CreateUserRequest): Promise<CreateUserResponse> {
    try {
-     const supabase = createAdminClient()
+     console.log('enviando convite', data.email)
 
-     // 1. Criar convite oficial no Supabase Auth
-     const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(data.email, {
-       redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://sigcomp-gameleira-irnl.vercel.app'}/nova-senha`,
-       data: {
-         nome: data.nome,
-         cargo: data.cargo,
-         perfil: data.perfil,
-         secretaria: data.secretaria,
-       },
+     const response = await fetch('/api/users/invite', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify(data),
      })
 
-     if (authError || !authData.user) {
+     const result = await response.json()
+
+     if (!response.ok || !result.success) {
+       console.error('erro ao enviar convite', result.error || result)
        return {
          success: false,
-         message: 'Erro ao criar usuário',
-         error: authError?.message || 'Erro desconhecido'
+         message: result.message || 'Erro ao criar usuário',
+         error: result.error || 'Erro desconhecido'
        }
      }
 
-     const userId = authData.user.id
-
-     // 2. Inserir na tabela `usuarios` (trigger fará o resto)
-     const { error: insertError } = await supabase
-       .from('usuarios')
-       .insert({
-         id: userId,
-         email: data.email,
-         nome: data.nome,
-         cargo: data.cargo,
-         secretaria: data.secretaria,
-         perfil: data.perfil,
-         status: 'convite_enviado',
-       })
-
-     if (insertError) {
-       await supabase.auth.admin.deleteUser(userId).catch(() => {})
-       return {
-         success: false,
-         message: 'Erro ao armazenar usuário',
-         error: insertError.message
-       }
-     }
-
+     console.log('convite enviado', result.userId)
      return {
        success: true,
-       message: 'Convite enviado por email com sucesso.',
-       userId
+       message: result.message || 'Convite enviado por email com sucesso.',
+       userId: result.userId
      }
    } catch (error) {
+     console.error('erro ao enviar convite', error)
      return {
        success: false,
        message: 'Erro ao criar usuário',
@@ -127,7 +103,7 @@ export interface UserData {
  */
 export async function updateUser(data: UpdateUserRequest): Promise<{ success: boolean; error?: string }> {
   try {
-     const supabase = createAdminClient()
+     const supabase = createClient()
 
      // 1. Atualizar na tabela `usuarios` (trigger fará sincronização)
      const { error } = await supabase
@@ -167,7 +143,7 @@ export async function updateUser(data: UpdateUserRequest): Promise<{ success: bo
  */
 export async function getUser(userId: string): Promise<{ success: boolean; data?: UserData; error?: string }> {
   try {
-    const supabase = createAdminClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('usuarios')
@@ -193,7 +169,7 @@ export async function listUsers(
   offset: number = 0
 ): Promise<{ success: boolean; data?: UserData[]; count?: number; error?: string }> {
   try {
-    const supabase = createAdminClient()
+    const supabase = createClient()
 
     const { data, error, count } = await supabase
       .from('usuarios')
@@ -219,7 +195,7 @@ export async function changeUserStatus(
   status: 'ativo' | 'bloqueado' | 'aguardando_ativacao'
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createAdminClient()
+    const supabase = createClient()
 
     const { error } = await supabase
       .from('usuarios')
@@ -241,14 +217,14 @@ export async function changeUserStatus(
  */
 export async function recordLogin(userId: string): Promise<void> {
   try {
-    const supabase = createAdminClient()
+    const supabase = createClient()
 
     await supabase
       .from('usuarios')
       .update({ last_login: new Date().toISOString() })
       .eq('id', userId)
   } catch (error) {
-    // Falha silenciosa
+    console.error('erro ao registrar login', error)
   }
 }
 
@@ -259,7 +235,7 @@ export async function getUsersByProfile(
   perfil: string
 ): Promise<{ success: boolean; data?: UserData[]; error?: string }> {
   try {
-    const supabase = createAdminClient()
+    const supabase = createClient()
 
     const { data, error } = await supabase
       .from('usuarios')
@@ -282,7 +258,7 @@ export async function getUsersByProfile(
  */
 export async function sendPasswordResetEmail(email: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createAdminClient()
+    const supabase = createClient()
     const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://sigcomp-gameleira-irnl.vercel.app'}/nova-senha`
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -349,7 +325,7 @@ function generateInviteEmail(nome: string): string {
  */
 export async function disableUser(userId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createAdminClient()
+    const supabase = createClient()
 
     const { error } = await supabase.auth.admin.updateUserById(userId, {
       user_metadata: { status: 'bloqueado' }
@@ -370,7 +346,7 @@ export async function disableUser(userId: string): Promise<{ success: boolean; e
  */
 export async function enableUser(userId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createAdminClient()
+    const supabase = createClient()
 
     const { error } = await supabase.auth.admin.updateUserById(userId, {
       user_metadata: { status: 'ativo' }
