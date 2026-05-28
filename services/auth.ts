@@ -8,7 +8,7 @@
  * - Permissões são regeneradas automaticamente baseado no perfil
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 
 // ============================================================
 // INTERFACES
@@ -18,6 +18,7 @@ export interface CreateUserRequest {
   email: string
   nome: string
   cargo: string
+  secretaria?: string
   perfil: string
 }
 
@@ -25,6 +26,7 @@ export interface UpdateUserRequest {
   userId: string
   nome?: string
   cargo?: string
+  secretaria?: string
   perfil?: string
   status?: string
 }
@@ -57,11 +59,17 @@ export interface UserData {
  */
  export async function createUserWithInvite(data: CreateUserRequest): Promise<CreateUserResponse> {
    try {
-     const supabase = await createClient()
+     const supabase = createAdminClient()
 
      // 1. Criar convite oficial no Supabase Auth
      const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(data.email, {
-       redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/nova-senha`,
+       redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://sigcomp-gameleira-irnl.vercel.app'}/nova-senha`,
+       data: {
+         nome: data.nome,
+         cargo: data.cargo,
+         perfil: data.perfil,
+         secretaria: data.secretaria,
+       },
      })
 
      if (authError || !authData.user) {
@@ -82,6 +90,7 @@ export interface UserData {
          email: data.email,
          nome: data.nome,
          cargo: data.cargo,
+         secretaria: data.secretaria,
          perfil: data.perfil,
          status: 'convite_enviado',
        })
@@ -118,16 +127,15 @@ export interface UserData {
  */
 export async function updateUser(data: UpdateUserRequest): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
+     const supabase = createAdminClient()
 
-    // 1. Atualizar na tabela `usuarios` (trigger fará sincronização)
-    const { error } = await supabase
-      .from('usuarios')
-      .update({
-        ...(data.nome && { nome: data.nome }),
-        ...(data.cargo && { cargo: data.cargo }),
-        ...(data.perfil && { perfil: data.perfil }),
-        ...(data.status && { status: data.status }),
+     // 1. Atualizar na tabela `usuarios` (trigger fará sincronização)
+     const { error } = await supabase
+       .from('usuarios')
+       .update({
+         ...(data.nome && { nome: data.nome }),
+         ...(data.cargo && { cargo: data.cargo }),
+         ...(data.secretaria && { secretaria: data.secretaria }),
       })
       .eq('id', data.userId)
 
@@ -159,7 +167,7 @@ export async function updateUser(data: UpdateUserRequest): Promise<{ success: bo
  */
 export async function getUser(userId: string): Promise<{ success: boolean; data?: UserData; error?: string }> {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data, error } = await supabase
       .from('usuarios')
@@ -185,7 +193,7 @@ export async function listUsers(
   offset: number = 0
 ): Promise<{ success: boolean; data?: UserData[]; count?: number; error?: string }> {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data, error, count } = await supabase
       .from('usuarios')
@@ -211,7 +219,7 @@ export async function changeUserStatus(
   status: 'ativo' | 'bloqueado' | 'aguardando_ativacao'
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { error } = await supabase
       .from('usuarios')
@@ -233,7 +241,7 @@ export async function changeUserStatus(
  */
 export async function recordLogin(userId: string): Promise<void> {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     await supabase
       .from('usuarios')
@@ -251,7 +259,7 @@ export async function getUsersByProfile(
   perfil: string
 ): Promise<{ success: boolean; data?: UserData[]; error?: string }> {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data, error } = await supabase
       .from('usuarios')
@@ -274,10 +282,11 @@ export async function getUsersByProfile(
  */
 export async function sendPasswordResetEmail(email: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
+    const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://sigcomp-gameleira-irnl.vercel.app'}/nova-senha`
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/nova-senha`
+      redirectTo: redirectUrl
     })
 
     if (error) {
@@ -340,7 +349,7 @@ function generateInviteEmail(nome: string): string {
  */
 export async function disableUser(userId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { error } = await supabase.auth.admin.updateUserById(userId, {
       user_metadata: { status: 'bloqueado' }
@@ -361,7 +370,7 @@ export async function disableUser(userId: string): Promise<{ success: boolean; e
  */
 export async function enableUser(userId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { error } = await supabase.auth.admin.updateUserById(userId, {
       user_metadata: { status: 'ativo' }
