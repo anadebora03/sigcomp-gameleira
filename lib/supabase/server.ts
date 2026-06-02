@@ -4,7 +4,6 @@ import { cookies } from 'next/headers'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
 export async function createClient() {
   const cookieStore = cookies()
@@ -32,9 +31,20 @@ export async function createClient() {
 }
 
 export function createAdminClient() {
-  if (!SUPABASE_SERVICE_ROLE_KEY) {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  console.log('[createAdminClient] SERVICE ROLE EXISTS:', !!serviceRoleKey)
+  console.log('[createAdminClient] SERVICE ROLE LENGTH:', serviceRoleKey?.length || 0)
+  
+  if (!serviceRoleKey) {
+    console.error('[createAdminClient] ERRO: SUPABASE_SERVICE_ROLE_KEY não encontrada')
+    console.error('[createAdminClient] Variáveis disponíveis:', {
+      NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    })
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for Supabase admin operations')
   }
 
-  return createSupabaseClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  return createSupabaseClient(SUPABASE_URL, serviceRoleKey)
 }

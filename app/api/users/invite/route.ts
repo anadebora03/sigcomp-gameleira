@@ -5,6 +5,8 @@ import type { CreateUserRequest } from '@/services/auth'
 export async function POST(request: Request) {
   try {
     const data = (await request.json()) as CreateUserRequest
+    
+    console.log('[invite] POST recebido:', { email: data.email, nome: data.nome })
 
     if (!data.email || !data.nome || !data.cargo || !data.perfil) {
       return NextResponse.json(
@@ -16,7 +18,10 @@ export async function POST(request: Request) {
       )
     }
 
+    console.log('[invite] Criando admin client...')
     const supabase = createAdminClient()
+    console.log('[invite] Admin client criado com sucesso')
+    
     const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL || 'https://sigcomp-gameleira-irnl.vercel.app'}/nova-senha`
 
     const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(data.email, {
