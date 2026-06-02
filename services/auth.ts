@@ -189,26 +189,17 @@ export async function listUsers(
   offset: number = 0
 ): Promise<{ success: boolean; data?: UserData[]; count?: number; error?: string }> {
   try {
-    const supabase = createClient()
+    const url = `/api/users/list?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`
+    const response = await fetch(url)
+    const result = await response.json()
 
-    const { data, error, count } = await supabase
-      .from('usuarios')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    if (error) {
-      console.error('[listUsers] Erro do Supabase:', error.message, error.code, error.details)
-      return { success: false, error: `${error.message} (${error.code})` }
+    if (!response.ok || !result.success) {
+      const message = result.error || result.message || 'Erro ao listar usuários'
+      console.error('[listUsers] API error:', message)
+      return { success: false, error: message }
     }
 
-    if (!data) {
-      console.warn('[listUsers] Nenhum dado retornado, mas sem erro')
-      return { success: true, data: [], count: 0 }
-    }
-
-    console.log('[listUsers] Usuários carregados:', data.length)
-    return { success: true, data, count: count || 0 }
+    return { success: true, data: result.data ?? [], count: result.count ?? 0 }
   } catch (error) {
     console.error('[listUsers] Erro de exceção:', error)
     return { success: false, error: String(error) }
