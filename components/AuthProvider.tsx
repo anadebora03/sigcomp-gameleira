@@ -12,7 +12,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     // Get initial session
+    console.log('[AuthProvider] Inicializando...')
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[AuthProvider] getSession retornou:', { 
+        hasSession: !!session, 
+        user: session?.user?.id,
+        email: session?.user?.email 
+      })
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
@@ -20,6 +26,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('[AuthProvider] onAuthStateChange:', { 
+        event: _event,
+        hasSession: !!session, 
+        user: session?.user?.id,
+        email: session?.user?.email 
+      })
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)

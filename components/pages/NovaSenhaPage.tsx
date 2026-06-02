@@ -14,12 +14,29 @@ export default function NovaSenhaPage() {
   const [done, setDone] = useState(false)
   const [erro, setErro] = useState('')
   const [showPass, setShowPass] = useState(false)
+  const [temToken, setTemToken] = useState(false)
 
-  // If no user in session (token expired), redirect to login
+  // Detectar se estamos em um fluxo de convite/reset (com token_hash na URL)
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    const type = params.get('type')
+    
+    console.log('[NovaSenhaPage] URL params:', { code, type, hasUser: !!user })
+    
+    if (code || type === 'invite' || type === 'recovery') {
+      setTemToken(true)
+      console.log('[NovaSenhaPage] Token de convite/recuperação detectado')
+      return
+    }
+    
+    // Só redirecionar se NÃO tem token e NÃO tem usuário após 3 segundos
     const timer = setTimeout(() => {
-      if (!user) router.push('/login')
-    }, 2000)
+      if (!user) {
+        console.log('[NovaSenhaPage] Sem token e sem usuário, redirecionando para /login')
+        router.push('/login')
+      }
+    }, 3000)
     return () => clearTimeout(timer)
   }, [user])
 
@@ -29,13 +46,19 @@ export default function NovaSenhaPage() {
     if (senha !== confirma) { setErro('As senhas não conferem.'); return }
     setLoading(true)
     setErro('')
+    console.log('[NovaSenhaPage] Atualizando senha...')
     const { error } = await updatePassword(senha)
     setLoading(false)
     if (error) {
+      console.error('[NovaSenhaPage] Erro ao atualizar:', error)
       setErro(error)
     } else {
+      console.log('[NovaSenhaPage] Senha atualizada com sucesso')
       setDone(true)
-      setTimeout(() => router.push('/'), 2500)
+      setTimeout(() => {
+        console.log('[NovaSenhaPage] Redirecionando para login')
+        router.push('/login')
+      }, 2500)
     }
   }
 

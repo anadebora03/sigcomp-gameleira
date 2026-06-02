@@ -46,6 +46,8 @@ export async function POST(request: Request) {
     }
 
     const userId = authData.user.id
+    console.log('[invite] Usuário criado em auth.users:', { userId, email: data.email })
+    
     const { error: insertError } = await supabase.from('usuarios').insert({
       id: userId,
       email: data.email,
@@ -56,7 +58,15 @@ export async function POST(request: Request) {
       status: 'convite_enviado',
     })
 
+    console.log('[invite] INSERT em public.usuarios:', { 
+      userId, 
+      email: data.email,
+      success: !insertError,
+      error: insertError?.message
+    })
+
     if (insertError) {
+      console.error('[invite] Erro ao inserir em usuarios, deletando auth.users:', insertError.message)
       await supabase.auth.admin.deleteUser(userId).catch(() => null)
       return NextResponse.json(
         {
@@ -67,6 +77,8 @@ export async function POST(request: Request) {
         { status: 500 }
       )
     }
+
+    console.log('[invite] Sucesso completo: auth.users + public.usuarios criados')
 
     return NextResponse.json({
       success: true,

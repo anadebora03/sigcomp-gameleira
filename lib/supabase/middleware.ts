@@ -24,17 +24,22 @@ export async function updateSession(request: NextRequest) {
   // Refresh session — IMPORTANT: do not add logic between createServerClient and getUser
   const { data: { user } } = await supabase.auth.getUser()
 
+  const pathname = request.nextUrl.pathname
+  console.log('[middleware] Rota acessada:', { pathname, hasUser: !!user, userId: user?.id })
+
   const isPublicPath = ['/login', '/recuperar-senha', '/nova-senha'].some(p =>
     request.nextUrl.pathname.startsWith(p)
   )
 
   if (!user && !isPublicPath) {
+    console.log('[middleware] Sem usuário e não é rota pública, redirecionando para /login')
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
   if (user && isPublicPath) {
+    console.log('[middleware] Usuário logado em rota pública, redirecionando para /')
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
