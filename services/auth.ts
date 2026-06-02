@@ -105,38 +105,27 @@ export interface UserData {
  */
 export async function updateUser(data: UpdateUserRequest): Promise<{ success: boolean; error?: string }> {
   try {
-     const supabase = createClient()
+    const response = await fetch(`/api/users/${encodeURIComponent(data.userId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nome: data.nome,
+        cargo: data.cargo,
+        secretaria: data.secretaria,
+        perfil: data.perfil,
+        status: data.status,
+      }),
+    })
 
-     // 1. Atualizar na tabela `usuarios` (trigger fará sincronização)
-     const { error } = await supabase
-       .from('usuarios')
-       .update({
-         ...(data.nome && { nome: data.nome }),
-         ...(data.cargo && { cargo: data.cargo }),
-         ...(data.secretaria && { secretaria: data.secretaria }),
-      })
-      .eq('id', data.userId)
+    const result = await response.json()
 
-    if (error) {
-      return {
-        success: false,
-        error: error.message
-      }
-    }
-
-    // 2. Se mudou perfil, regenerar permissões
-    if (data.perfil) {
-      await supabase.rpc('regenerate_permissions', {
-        p_user_id: data.userId
-      })
+    if (!response.ok || !result.success) {
+      return { success: false, error: result.error || result.message || 'Erro ao atualizar usuário' }
     }
 
     return { success: true }
   } catch (error) {
-    return {
-      success: false,
-      error: String(error)
-    }
+    return { success: false, error: String(error) }
   }
 }
 
@@ -234,15 +223,34 @@ export async function changeUserStatus(
   status: 'ativo' | 'bloqueado' | 'aguardando_ativacao'
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createClient()
+    const response = await fetch(`/api/users/${encodeURIComponent(userId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
 
-    const { error } = await supabase
-      .from('usuarios')
-      .update({ status })
-      .eq('id', userId)
+    const result = await response.json()
 
-    if (error) {
-      return { success: false, error: error.message }
+    if (!response.ok || !result.success) {
+      return { success: false, error: result.error || result.message || 'Erro ao atualizar status do usuário' }
+    }
+
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: String(error) }
+  }
+}
+
+export async function deleteUser(userId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`/api/users/${encodeURIComponent(userId)}`, {
+      method: 'DELETE',
+    })
+
+    const result = await response.json()
+
+    if (!response.ok || !result.success) {
+      return { success: false, error: result.error || result.message || 'Erro ao excluir usuário' }
     }
 
     return { success: true }
@@ -364,14 +372,15 @@ function generateInviteEmail(nome: string): string {
  */
 export async function disableUser(userId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createClient()
-
-    const { error } = await supabase.auth.admin.updateUserById(userId, {
-      user_metadata: { status: 'bloqueado' }
+    const response = await fetch(`/api/users/${encodeURIComponent(userId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'bloqueado' }),
     })
 
-    if (error) {
-      return { success: false, error: error.message }
+    const result = await response.json()
+    if (!response.ok || !result.success) {
+      return { success: false, error: result.error || result.message || 'Erro ao bloquear usuário' }
     }
 
     return { success: true }
@@ -385,14 +394,15 @@ export async function disableUser(userId: string): Promise<{ success: boolean; e
  */
 export async function enableUser(userId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = createClient()
-
-    const { error } = await supabase.auth.admin.updateUserById(userId, {
-      user_metadata: { status: 'ativo' }
+    const response = await fetch(`/api/users/${encodeURIComponent(userId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'ativo' }),
     })
 
-    if (error) {
-      return { success: false, error: error.message }
+    const result = await response.json()
+    if (!response.ok || !result.success) {
+      return { success: false, error: result.error || result.message || 'Erro ao ativar usuário' }
     }
 
     return { success: true }

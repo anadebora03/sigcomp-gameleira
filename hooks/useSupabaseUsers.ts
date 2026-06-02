@@ -6,14 +6,14 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { PERFIS_PERMISSOES } from '@/lib/constants'
 import type { UserData } from '@/services/auth'
 import { 
   createUserWithInvite, 
   updateUser, 
   listUsers, 
-  changeUserStatus 
+  changeUserStatus,
+  deleteUser as deleteUserService
 } from '@/services/auth'
 
 export interface UseSupabaseUsersOptions {
@@ -27,7 +27,6 @@ export function useSupabaseUsers(options: UseSupabaseUsersOptions = {}) {
   const [usuarios, setUsuarios] = useState<UserData[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const supabase = createClient()
 
   /**
    * Carregar usuários do Supabase
@@ -158,15 +157,10 @@ export function useSupabaseUsers(options: UseSupabaseUsersOptions = {}) {
     try {
       setError(null)
       
-      // Deletar via Supabase (cascade do RLS)
-      const { error: err } = await supabase
-        .from('usuarios')
-        .delete()
-        .eq('id', userId)
-      
-      if (err) {
-        setError(err.message)
-        return { success: false, error: err.message }
+      const result = await deleteUserService(userId)
+      if (!result.success) {
+        setError(result.error || 'Erro ao excluir usuário')
+        return result
       }
       
       // Atualizar lista local
@@ -177,7 +171,7 @@ export function useSupabaseUsers(options: UseSupabaseUsersOptions = {}) {
       setError(errorMsg)
       return { success: false, error: errorMsg }
     }
-  }, [supabase])
+  }, [])
 
   /**
    * Buscar usuário por ID
