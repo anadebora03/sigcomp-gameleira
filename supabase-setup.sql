@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS public.perfis (
   cargo TEXT,
   perfil TEXT DEFAULT 'setor_compras',
   ativo BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- RLS: cada usuário vê apenas seu perfil, admins veem tudo

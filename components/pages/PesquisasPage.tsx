@@ -22,7 +22,10 @@ function PesquisaForm({initial,oficios,pesquisas,onSave,onClose}:any){
   const delForn=(id:number)=>up('fornecedores',f.fornecedores.filter((x:any)=>x.id!==id))
   const vals=f.fornecedores.map((x:any)=>Number(x.valor||0)).filter((v:number)=>v>0)
   const menorV=vals.length>0?Math.min(...vals):0
-  function save(){if(!f.objeto.trim()){alert('Preencha o objeto.');return}onSave({...f,secretaria_id:Number(f.secretaria_id),id:f.id||uid()})}
+  function save(){if(!f.objeto.trim()){alert('Preencha o objeto.');return}
+    const payload = { ...f, secretaria_id: Number(f.secretaria_id), ...(f.id ? { id: f.id } : {}) }
+    onSave(payload)
+  }
   return(
     <div style={{display:'flex',flexDirection:'column',gap:14}}>
       {/* Identificação */}
@@ -243,7 +246,7 @@ export default function PesquisasPage({pesquisas,oficios,savePesquisa,deletePesq
     return(!q||p.numero.toLowerCase().includes(sq)||p.objeto.toLowerCase().includes(sq))&&(!fSec||p.secretaria_id===Number(fSec))&&(!fSt||p.status===fSt)
   })
   function save(data:any){savePesquisa(data,modal==='new');toast(modal==='new'?'Cadastrado!':'Atualizado!','success');setModal(null);setSel(null)}
-  function del(id:number){if(!confirm('Excluir pesquisa?'))return;deletePesquisa(id);toast('Excluído.','info')}
+  function del(id:string){if(!confirm('Excluir pesquisa?'))return;deletePesquisa(id);toast('Excluído.','info')}
   const th:React.CSSProperties={padding:'10px 14px',textAlign:'left',fontSize:9,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.06em',whiteSpace:'nowrap'}
   const totals=[['Total',pesquisas.length,'#1a5c38'],['Aguardando',pesquisas.filter((p:any)=>p.status==='aguardando').length,'#4a6155'],['Em Andamento',pesquisas.filter((p:any)=>p.status==='andamento').length,'#a07800'],['Concluídas',pesquisas.filter((p:any)=>p.status==='concluida').length,'#1a5c38']]
   return(

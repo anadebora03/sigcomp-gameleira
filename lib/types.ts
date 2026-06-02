@@ -33,7 +33,7 @@ export interface Historico { data: string; acao: string; usuario: string }
 export interface Comentario { texto: string; data: string; usuario: string }
 
 export interface Oficio {
-  id: number; numero: string; secretaria_id: number; responsavel: string
+  id: string; numero: string; secretaria_id: number; responsavel: string
   resp_acomp: string; data: string; assunto: string; descricao: string
   tipo: string; prioridade: string; prazo: string; status: string
   obs: string; favorito: boolean; historico: Historico[]
@@ -41,21 +41,21 @@ export interface Oficio {
 }
 
 export interface Processo {
-  id: number; numero: string; secretaria_id: number; modalidade: string
+  id: string; numero: string; secretaria_id: number; modalidade: string
   assunto: string; status: string; data_abertura: string; data_prevista: string
   responsavel: string; valor_estimado: number | string; valor_final: string
   obs: string; anexos: Arquivo[]; contrato: Contrato | null
 }
 
 export interface Pesquisa {
-  id: number; numero: string; secretaria_id: number; objeto: string
+  id: string; numero: string; secretaria_id: number; objeto: string
   descricao: string; oficio_ref: string; periodo: string; prazo_cotacao: string
   responsavel: string; status: string; obs: string
   fornecedores: Fornecedor[]; anexos: Arquivo[]
 }
 
 export interface Usuario {
-  id: number; nome: string; cargo: string; email: string
+  id: string; nome: string; cargo: string; email: string
   perfil: string; ativo: boolean; avatar: string; senha?: string; senha2?: string
   status?: string; // 'convite_enviado' | 'aguardando_ativacao' | 'ativo' | 'bloqueado'
   permissoes?: Record<string, boolean>  // JSONB: chaves tipo "oficios.criar", valores booleanos
@@ -100,6 +100,6 @@ export interface Permissoes {
 }
 
 export interface Log {
-  id: number; usuario: string; modulo: string; tipo: string
+  id: string; usuario: string; modulo: string; tipo: string
   descricao: string; data: string
 }

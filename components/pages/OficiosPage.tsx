@@ -18,7 +18,8 @@ function OficioForm({initial,oficios,onSave,onClose}:any){
   function save(){
     if(!f.assunto.trim()){alert('Preencha o assunto.');return}
     const h=[...(f.historico||[]),{data:td(),acao:!initial?'Cadastrado':'Atualizado',usuario:'Você'}]
-    onSave({...f,secretaria_id:Number(f.secretaria_id),id:f.id||uid(),historico:h})
+    const payload = { ...f, secretaria_id: Number(f.secretaria_id), historico: h, ...(f.id ? { id: f.id } : {}) }
+    onSave(payload)
   }
   async function addAnexos(files:File[]){const n=await uploadFiles(files);if(n.length)up('anexos',[...(f.anexos||[]),...n])}
   const sec=gS(Number(f.secretaria_id))
@@ -96,10 +97,10 @@ function OficioDetail({o,setOficios,onClose,onEdit,saveOficio}:any){
       await saveOficio(updated,false)
     }
   }
-  async function delA(id:number){
-    const updatedAnexos=(o.anexos||[]).filter((a:any)=>a.id!==id)
+  async function delA(id:string){
+    const updatedAnexos=(o.anexos||[]).filter((a:any)=>String(a.id)!==String(id))
     const updated = {...o, anexos: updatedAnexos}
-    setAnx((p:any)=>p.filter((a:any)=>a.id!==id))
+    setAnx((p:any)=>p.filter((a:any)=>String(a.id)!==String(id)))
     setOficios((prev:any)=>prev.map((x:any)=>x.id===o.id?updated:x))
     await saveOficio(updated,false)
   }
@@ -140,7 +141,7 @@ function OficioDetail({o,setOficios,onClose,onEdit,saveOficio}:any){
           </div>
           <DropZoneUpload onFiles={addFiles} uploading={uploaDet} erros={errosDet}/>
           {anx.length===0&&<p style={{textAlign:'center',color:'var(--muted)',fontSize:12,padding:16}}>Nenhum documento.</p>}
-          {anx.map((a:any)=><ARow key={a.id} a={a} onDelete={async(id:string)=>{const arq=anx.find((x:any)=>x.id===id);if(arq?.caminho)await deleteArquivo(arq as any);delA(Number(id))}}/>)}
+          {anx.map((a:any)=><ARow key={a.id} a={a} onDelete={async(id:string)=>{const arq=anx.find((x:any)=>String(x.id)===String(id));if(arq?.caminho)await deleteArquivo(arq as any);delA(id)}}/>)}
         </div>
       )}
       {tab==='hist'&&(
@@ -193,7 +194,7 @@ export default function OficiosPage({oficios,setOficios,saveOficio,deleteOficio,
     return(!q||o.numero.toLowerCase().includes(sq)||o.assunto.toLowerCase().includes(sq))&&(!fSec||o.secretaria_id===Number(fSec))&&(!fSt||o.status===fSt)
   })
   function save(data:any){saveOficio(data,modal==='new');toast(modal==='new'?'Cadastrado!':'Atualizado!','success');setModal(null);setSel(null)}
-  function del(id:number){if(!confirm('Excluir?'))return;deleteOficio(id);toast('Excluído.','info')}
+  function del(id:string){if(!confirm('Excluir?'))return;deleteOficio(id);toast('Excluído.','info')}
   const th:React.CSSProperties={padding:'10px 14px',textAlign:'left',fontSize:9,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.06em',whiteSpace:'nowrap'}
   return(
     <div style={{display:'flex',flexDirection:'column',gap:14}}>

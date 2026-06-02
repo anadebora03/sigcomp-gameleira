@@ -15,7 +15,10 @@ function PlForm({ini,pls,onSave,onClose}:any){
   const{uploadFiles:upFiles,uploading:uploading,erros:upErros}=useUpload({modulo:'processos',vinculo:ini?.numero||'novo',secretaria_id:1})
   const[f,sf]=useState(ini||{numero:nPl(pls),secretaria_id:1,modalidade:'pregao_eletronico',assunto:'',status:'solicitado',data_abertura:td(),data_prevista:'',responsavel:'',valor_estimado:'',valor_final:'',obs:'',anexos:[],contrato:null})
   const up=(k:string,v:any)=>sf((p:any)=>({...p,[k]:v}))
-  function sv(){if(!f.assunto.trim()){alert('Preencha o assunto.');return}onSave({...f,secretaria_id:Number(f.secretaria_id),id:f.id||uid()})}
+  function sv(){if(!f.assunto.trim()){alert('Preencha o assunto.');return}
+    const payload = { ...f, secretaria_id: Number(f.secretaria_id), ...(f.id ? { id: f.id } : {}) }
+    onSave(payload)
+  }
   async function addAnexos(files:File[]){const n=await upFiles(files);if(n.length)up('anexos',[...(f.anexos||[]),...n])}
   return(
     <div style={{display:'flex',flexDirection:'column',gap:13}}>
@@ -236,7 +239,7 @@ export default function ProcessosPage({processos,setProcessos,saveProcesso,delet
   })
   function save(data:any){saveProcesso(data,modal==='new');toast(modal==='new'?'Cadastrado!':'Atualizado!','success');setModal(null);setSel(null)}
   function saveContrato(data:any){saveProcesso(data,false);toast('Contrato salvo!','success');setDetProc(null)}
-  function del(id:number){if(!confirm('Excluir?'))return;deleteProcesso(id);toast('Excluído.','info')}
+  function del(id:string){if(!confirm('Excluir?'))return;deleteProcesso(id);toast('Excluído.','info')}
   const th:React.CSSProperties={padding:'10px 14px',textAlign:'left',fontSize:9,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.06em',whiteSpace:'nowrap'}
   return(
     <div style={{display:'flex',flexDirection:'column',gap:14}}>

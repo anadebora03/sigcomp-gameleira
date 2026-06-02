@@ -75,7 +75,7 @@ export async function saveOficio(oficio: Oficio, isNew: boolean): Promise<{ succ
   }
 }
 
-export async function deleteOficio(id: number): Promise<{ success: boolean; error?: string }> {
+export async function deleteOficio(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     console.log('[data] deletando ofício:', id)
     const supabase = client()
@@ -159,7 +159,7 @@ export async function saveProcesso(processo: Processo, isNew: boolean): Promise<
   }
 }
 
-export async function deleteProcesso(id: number): Promise<{ success: boolean; error?: string }> {
+export async function deleteProcesso(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     console.log('[data] deletando processo:', id)
     const supabase = client()
@@ -243,7 +243,7 @@ export async function savePesquisa(pesquisa: Pesquisa, isNew: boolean): Promise<
   }
 }
 
-export async function deletePesquisa(id: number): Promise<{ success: boolean; error?: string }> {
+export async function deletePesquisa(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     console.log('[data] deletando pesquisa de preço:', id)
     const supabase = client()
@@ -298,13 +298,29 @@ export async function listSecretarias(): Promise<{ success: boolean; data?: Secr
   try {
     console.log('[data] carregando secretarias do Supabase')
     const supabase = client()
-    const { data, error } = await supabase.from('secretarias').select('*').order('id', { ascending: true })
+    const { data, error } = await supabase.from('secretarias').select('*').order('legacy_id', { ascending: true })
     if (error) {
       console.error('[data] erro ao carregar secretarias:', error.message)
       return { success: false, error: error.message }
     }
     console.log('[data] secretarias carregadas com sucesso:', data?.length || 0)
-    return { success: true, data: data || [] }
+
+    // Mapear para o formato esperado pelo frontend (id numérico = legacy_id)
+    const mapped = (data || []).map((s: any) => ({ id: Number(s.legacy_id || s.id), nome: s.nome, sigla: s.sigla, cor: s.cor }))
+
+    try {
+      // Atualizar lista in-memory de SECS para compatibilidade com helpers que usam SECS
+      const consts = await import('@/lib/constants')
+      if (consts && Array.isArray(consts.SECS)) {
+        consts.SECS.length = 0
+        mapped.forEach((m: any) => consts.SECS.push(m))
+      }
+    } catch (e) {
+      // não fatal — apenas log
+      console.warn('[data] nao foi possivel sincronizar SECS em memoria:', e)
+    }
+
+    return { success: true, data: mapped }
   } catch (err) {
     console.error('[data] erro ao carregar secretarias:', err)
     return { success: false, error: String(err) }

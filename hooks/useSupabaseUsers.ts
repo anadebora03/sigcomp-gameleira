@@ -36,14 +36,19 @@ export function useSupabaseUsers(options: UseSupabaseUsersOptions = {}) {
     setLoading(true)
     setError(null)
     try {
-      const { success, data } = await listUsers(limit)
+      const { success, data, error: apiError } = await listUsers(limit)
       if (success && data) {
+        console.log('[useSupabaseUsers] Usuários carregados:', data.length)
         setUsuarios(data)
       } else {
-        setError('Erro ao carregar usuários')
+        const errorMsg = apiError || 'Erro ao carregar usuários'
+        console.error('[useSupabaseUsers] Erro ao carregar:', errorMsg)
+        setError(errorMsg)
       }
     } catch (err) {
-      setError(String(err))
+      const errorMsg = String(err)
+      console.error('[useSupabaseUsers] Exceção:', errorMsg)
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }

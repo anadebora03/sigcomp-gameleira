@@ -18,7 +18,7 @@ function useClock() {
   return now
 }
 
-function ClockBar({ saudacao, nomeUsuario, errorMessage }: { saudacao: string; nomeUsuario: string; errorMessage?: string | null }) {
+function ClockBar({ saudacao, nomeUsuario }: { saudacao: string; nomeUsuario: string }) {
   const now = useClock()
   const dias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
   const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -31,7 +31,7 @@ function ClockBar({ saudacao, nomeUsuario, errorMessage }: { saudacao: string; n
       <div style={{ minWidth: 240 }}>
         <p style={{ fontSize: 16, fontWeight: 900, color: '#fff', margin: 0, lineHeight: 1.1 }}>{saudacao}, {nomeUsuario}!</p>
         <p style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', margin: '8px 0 0', maxWidth: 420, lineHeight: 1.4 }}>Painel principal com dados de ofícios, processos e pesquisas de preço.</p>
-        {errorMessage && <p style={{ fontSize: 11, color: '#fcd34d', margin: '8px 0 0' }}>{errorMessage}</p>}
+        
       </div>
       <div style={{ textAlign: 'right', minWidth: 180 }}>
         <p style={{ fontSize: 11, color: 'rgba(255,255,255,.75)', fontWeight: 600, margin: 0 }}>{dia} — {data}</p>
@@ -45,7 +45,6 @@ function ClockBar({ saudacao, nomeUsuario, errorMessage }: { saudacao: string; n
 export default function Dashboard({ user, oficios, processos, pesquisas }: any) {
   const mob = useMob()
   const [nomeUsuario, setNomeUsuario] = useState('Usuário')
-  const [nomeError, setNomeError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -71,11 +70,10 @@ export default function Dashboard({ user, oficios, processos, pesquisas }: any) 
           }
         } else {
           console.error('[dashboard] erro ao buscar usuário:', result.error)
-          setNomeError('Não foi possível buscar seu nome no sistema. Usando o e-mail como fallback.')
         }
       } catch (err) {
         console.error('[dashboard] erro ao buscar usuário:', err)
-        setNomeError('Não foi possível carregar seu nome no momento.')
+        // não mostrar mensagem técnica para o usuário
       }
 
       if (user?.email) {
@@ -107,7 +105,7 @@ export default function Dashboard({ user, oficios, processos, pesquisas }: any) 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <ClockBar saudacao={saudacao} nomeUsuario={nomeUsuario} errorMessage={nomeError} />
+      <ClockBar saudacao={saudacao} nomeUsuario={nomeUsuario} />
       <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr 1fr' : 'repeat(6,1fr)', gap: 12 }}>
         {cards.map((c, i) => (
           <div key={i} style={{ background: `linear-gradient(135deg,${c.g})`, borderRadius: 16, padding: 16, color: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,.15)', animation: `fadeUp .4s ease ${i * .06}s both` }}>

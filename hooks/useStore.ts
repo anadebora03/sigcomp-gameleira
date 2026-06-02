@@ -101,7 +101,7 @@ export function useStore() {
     return result
   }, [])
 
-  const deleteOficio = useCallback(async (id: number) => {
+  const deleteOficio = useCallback(async (id: string) => {
     console.log('[store] deletando ofício:', id)
     setError(null)
     const oficio = oficios.find(o => o.id === id)
@@ -141,7 +141,7 @@ export function useStore() {
     return result
   }, [])
 
-  const deleteProcesso = useCallback(async (id: number) => {
+  const deleteProcesso = useCallback(async (id: string) => {
     console.log('[store] deletando processo:', id)
     setError(null)
     const processo = processos.find(p => p.id === id)
@@ -181,7 +181,7 @@ export function useStore() {
     return result
   }, [])
 
-  const deletePesquisa = useCallback(async (id: number) => {
+  const deletePesquisa = useCallback(async (id: string) => {
     console.log('[store] deletando pesquisa:', id)
     setError(null)
     const result = await removePesquisa(id)

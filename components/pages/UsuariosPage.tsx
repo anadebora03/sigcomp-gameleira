@@ -14,7 +14,7 @@ function UFrm({ini,onSave,onClose}:any){
   function pickAv(e:any){const fl=e.target.files[0];if(!fl)return;const r=new FileReader();r.onload=ev=>up('avatar',(ev.target as any).result);r.readAsDataURL(fl)}
   function sv(){
     if(!f.nome.trim()||!f.email.trim()){alert('Preencha nome e email.');return}
-    onSave({...f,id:f.id||uid()})
+    onSave(f)
   }
   const ini2=f.nome?f.nome.split(' ').slice(0,2).map((n:string)=>n[0]).join('').toUpperCase():'?'
   const [expandPerms, setExpandPerms] = useState(false)

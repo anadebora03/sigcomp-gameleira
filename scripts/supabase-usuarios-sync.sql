@@ -60,7 +60,7 @@ CREATE POLICY "Admins criam usuários" ON public.usuarios
 
 -- 5. Criar tabela de auditoria
 CREATE TABLE IF NOT EXISTS public.usuarios_auditoria (
-  id BIGSERIAL PRIMARY KEY,
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   usuario_id UUID REFERENCES public.usuarios(id) ON DELETE SET NULL,
   acao TEXT NOT NULL,
   dados_anterior JSONB,
@@ -153,7 +153,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 11. Tabela de permissões padrão por perfil (referência)
 -- Isso facilita regenerar permissões se necessário
 CREATE TABLE IF NOT EXISTS public.perfil_permissoes (
-  id SERIAL PRIMARY KEY,
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   perfil TEXT NOT NULL UNIQUE,
   permissoes JSONB NOT NULL,
   descricao TEXT,

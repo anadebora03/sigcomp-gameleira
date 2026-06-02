@@ -15,17 +15,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Função auxiliar para preencher auth_user_id quando ausente
-CREATE OR REPLACE FUNCTION public.usuarios_set_auth_user_id()
-RETURNS trigger AS $$
-BEGIN
-  IF NEW.auth_user_id IS NULL THEN
-    NEW.auth_user_id = NEW.id;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- ============================================================
 -- Tabela de secretarias
 CREATE TABLE IF NOT EXISTS public.secretarias (
@@ -60,15 +49,20 @@ CREATE POLICY "Autenticados podem ver secretarias" ON public.secretarias
   FOR SELECT USING (auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Autenticados podem manipular secretarias" ON public.secretarias;
-CREATE POLICY "Autenticados podem manipular secretarias" ON public.secretarias
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Admins podem manipular secretarias" ON public.secretarias
+  FOR ALL USING (
+    auth.role() = 'authenticated' AND
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  )
+  WITH CHECK (
+    auth.role() = 'authenticated' AND
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  );
 
 -- ============================================================
 -- Tabela de usuários
 CREATE TABLE IF NOT EXISTS public.usuarios (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  auth_user_id UUID UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   nome TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   nome_completo TEXT,
@@ -98,14 +92,6 @@ BEGIN
       BEFORE UPDATE ON public.usuarios
       FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
   END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger WHERE tgname = 'usuarios_set_auth_user_id'
-  ) THEN
-    CREATE TRIGGER usuarios_set_auth_user_id
-      BEFORE INSERT ON public.usuarios
-      FOR EACH ROW EXECUTE FUNCTION public.usuarios_set_auth_user_id();
-  END IF;
 END
 $$;
 
@@ -115,7 +101,7 @@ DROP POLICY IF EXISTS "Usuários podem ver seus próprios dados" ON public.usuar
 CREATE POLICY "Usuários podem ver seus próprios dados" ON public.usuarios
   FOR SELECT USING (
     auth.role() = 'authenticated' AND (
-      auth.uid() = auth_user_id OR
+      auth.uid() = id OR
       (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
     )
   );
@@ -127,6 +113,10 @@ CREATE POLICY "Admins podem ver todos os usuários" ON public.usuarios
       (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
     )
   );
+
+DROP POLICY IF EXISTS "Autenticados podem ver todos os usuários" ON public.usuarios;
+CREATE POLICY "Autenticados podem ver todos os usuários" ON public.usuarios
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Admins podem criar usuários" ON public.usuarios;
 CREATE POLICY "Admins podem criar usuários" ON public.usuarios
@@ -140,12 +130,12 @@ DROP POLICY IF EXISTS "Usuários podem atualizar próprios dados" ON public.usua
 CREATE POLICY "Usuários podem atualizar próprios dados" ON public.usuarios
   FOR UPDATE USING (
     auth.role() = 'authenticated' AND (
-      auth.uid() = auth_user_id OR
+      auth.uid() = id OR
       (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
     )
   ) WITH CHECK (
     auth.role() = 'authenticated' AND (
-      auth.uid() = auth_user_id OR
+      auth.uid() = id OR
       (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
     )
   );
@@ -153,6 +143,61 @@ CREATE POLICY "Usuários podem atualizar próprios dados" ON public.usuarios
 DROP POLICY IF EXISTS "Admins podem excluir usuários" ON public.usuarios;
 CREATE POLICY "Admins podem excluir usuários" ON public.usuarios
   FOR DELETE USING (
+    auth.role() = 'authenticated' AND (
+      (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+    )
+  );
+
+-- ============================================================
+-- Tabela de perfis
+CREATE TABLE IF NOT EXISTS public.perfis (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  nome TEXT,
+  nome_completo TEXT,
+  display_name TEXT,
+  cargo TEXT,
+  perfil TEXT DEFAULT 'setor_compras',
+  ativo BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_perfis_perfil ON public.perfis(perfil);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'perfis_set_updated_at'
+  ) THEN
+    CREATE TRIGGER perfis_set_updated_at
+      BEFORE UPDATE ON public.perfis
+      FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+  END IF;
+END
+$$;
+
+ALTER TABLE public.perfis ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Usuários veem seu próprio perfil" ON public.perfis;
+CREATE POLICY "Usuários veem seu próprio perfil" ON public.perfis
+  FOR SELECT USING (auth.role() = 'authenticated' AND auth.uid() = id);
+
+DROP POLICY IF EXISTS "Admins veem todos" ON public.perfis;
+CREATE POLICY "Admins veem todos" ON public.perfis
+  FOR SELECT USING (
+    auth.role() = 'authenticated' AND (
+      (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins manipulam perfis" ON public.perfis;
+CREATE POLICY "Admins manipulam perfis" ON public.perfis
+  FOR ALL USING (
+    auth.role() = 'authenticated' AND (
+      (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+    )
+  )
+  WITH CHECK (
     auth.role() = 'authenticated' AND (
       (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
     )
@@ -206,9 +251,15 @@ CREATE POLICY "Autenticados podem ver ofícios" ON public.oficios
   FOR SELECT USING (auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Autenticados podem manipular ofícios" ON public.oficios;
-CREATE POLICY "Autenticados podem manipular ofícios" ON public.oficios
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Admins podem manipular ofícios" ON public.oficios
+  FOR ALL USING (
+    auth.role() = 'authenticated' AND
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  )
+  WITH CHECK (
+    auth.role() = 'authenticated' AND
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  );
 
 -- ============================================================
 -- Tabela de processos
@@ -255,9 +306,15 @@ CREATE POLICY "Autenticados podem ver processos" ON public.processos
   FOR SELECT USING (auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Autenticados podem manipular processos" ON public.processos;
-CREATE POLICY "Autenticados podem manipular processos" ON public.processos
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Admins podem manipular processos" ON public.processos
+  FOR ALL USING (
+    auth.role() = 'authenticated' AND
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  )
+  WITH CHECK (
+    auth.role() = 'authenticated' AND
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  );
 
 -- ============================================================
 -- Tabela de pesquisas de preço
@@ -304,9 +361,15 @@ CREATE POLICY "Autenticados podem ver pesquisas_preco" ON public.pesquisas_preco
   FOR SELECT USING (auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Autenticados podem manipular pesquisas_preco" ON public.pesquisas_preco;
-CREATE POLICY "Autenticados podem manipular pesquisas_preco" ON public.pesquisas_preco
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Admins podem manipular pesquisas_preco" ON public.pesquisas_preco
+  FOR ALL USING (
+    auth.role() = 'authenticated' AND
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  )
+  WITH CHECK (
+    auth.role() = 'authenticated' AND
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  );
 
 -- ============================================================
 -- Tabela de logs
@@ -343,9 +406,84 @@ CREATE POLICY "Autenticados podem ver logs" ON public.logs
   FOR SELECT USING (auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Autenticados podem manipular logs" ON public.logs;
-CREATE POLICY "Autenticados podem manipular logs" ON public.logs
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Autenticados inserem logs" ON public.logs
+  FOR INSERT WITH CHECK (
+    auth.role() = 'authenticated' AND auth.uid() IS NOT NULL
+  );
+
+CREATE POLICY "Admins podem manipular logs" ON public.logs
+  FOR UPDATE, DELETE USING (
+    auth.role() = 'authenticated' AND
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  )
+  WITH CHECK (
+    auth.role() = 'authenticated' AND
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  );
+
+-- ============================================================
+-- Tabela de documentos
+CREATE TABLE IF NOT EXISTS public.documentos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome TEXT NOT NULL,
+  caminho TEXT NOT NULL UNIQUE,
+  mime_type TEXT NOT NULL,
+  tamanho BIGINT NOT NULL,
+  modulo TEXT NOT NULL,
+  vinculo_id TEXT NOT NULL,
+  vinculo_num TEXT NOT NULL,
+  secretaria_id BIGINT,
+  uploaded_by UUID REFERENCES auth.users(id),
+  uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_documentos_vinculo ON public.documentos(vinculo_id);
+CREATE INDEX IF NOT EXISTS idx_documentos_modulo ON public.documentos(modulo);
+CREATE INDEX IF NOT EXISTS idx_documentos_user ON public.documentos(uploaded_by);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'documentos_set_updated_at'
+  ) THEN
+    CREATE TRIGGER documentos_set_updated_at
+      BEFORE UPDATE ON public.documentos
+      FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+  END IF;
+END
+$$;
+
+ALTER TABLE public.documentos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Autenticados leem documentos" ON public.documentos;
+CREATE POLICY "Autenticados leem documentos" ON public.documentos
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Autenticados inserem documentos" ON public.documentos;
+CREATE POLICY "Autenticados inserem documentos" ON public.documentos
+  FOR INSERT WITH CHECK (
+    auth.role() = 'authenticated' AND auth.uid() = uploaded_by
+  );
+
+DROP POLICY IF EXISTS "Dono ou admin pode deletar" ON public.documentos;
+CREATE POLICY "Dono ou admin pode deletar" ON public.documentos
+  FOR DELETE USING (
+    auth.uid() = uploaded_by OR
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  );
+
+DROP POLICY IF EXISTS "Dono ou admin pode atualizar" ON public.documentos;
+CREATE POLICY "Dono ou admin pode atualizar" ON public.documentos
+  FOR UPDATE USING (
+    auth.uid() = uploaded_by OR
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  )
+  WITH CHECK (
+    auth.uid() = uploaded_by OR
+    (SELECT raw_user_meta_data->>'perfil' FROM auth.users WHERE id = auth.uid()) = 'administrador'
+  );
 
 -- ============================================================
 -- Tabela de configurações

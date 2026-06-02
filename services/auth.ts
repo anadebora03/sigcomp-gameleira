@@ -209,11 +209,19 @@ export async function listUsers(
       .range(offset, offset + limit - 1)
 
     if (error) {
-      return { success: false, error: error.message }
+      console.error('[listUsers] Erro do Supabase:', error.message, error.code, error.details)
+      return { success: false, error: `${error.message} (${error.code})` }
     }
 
+    if (!data) {
+      console.warn('[listUsers] Nenhum dado retornado, mas sem erro')
+      return { success: true, data: [], count: 0 }
+    }
+
+    console.log('[listUsers] Usuários carregados:', data.length)
     return { success: true, data, count: count || 0 }
   } catch (error) {
+    console.error('[listUsers] Erro de exceção:', error)
     return { success: false, error: String(error) }
   }
 }

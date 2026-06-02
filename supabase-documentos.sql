@@ -11,9 +11,11 @@ CREATE TABLE IF NOT EXISTS public.documentos (
   modulo        TEXT NOT NULL,               -- 'oficios' | 'processos' | 'pesquisas' | 'contratos'
   vinculo_id    TEXT NOT NULL,               -- numero do oficio/processo
   vinculo_num   TEXT NOT NULL,               -- numero legível (OFF-2025-0001)
-  secretaria_id INTEGER,
-  uploaded_by   UUID REFERENCES auth.users,
-  uploaded_at   TIMESTAMPTZ DEFAULT now()
+  secretaria_id BIGINT REFERENCES public.secretarias(legacy_id) ON DELETE SET NULL,
+  uploaded_by   UUID REFERENCES auth.users(id),
+  uploaded_at   TIMESTAMPTZ DEFAULT now(),
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  updated_at    TIMESTAMPTZ DEFAULT now()
 );
 
 -- Índices para busca rápida
