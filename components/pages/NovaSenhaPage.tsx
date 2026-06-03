@@ -3,11 +3,13 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { createClient } from '@/lib/supabase/client'
 import { Ic } from '@/components/ui/atoms'
 
 export default function NovaSenhaPage() {
   const { updatePassword, user } = useAuth()
   const router = useRouter()
+  const supabase = createClient()
   const [senha, setSenha] = useState('')
   const [confirma, setConfirma] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,30 +17,56 @@ export default function NovaSenhaPage() {
   const [erro, setErro] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [temToken, setTemToken] = useState(false)
+  const [callbackError, setCallbackError] = useState<string | null>(null)
 
-  // Detectar se estamos em um fluxo de convite/reset (com token_hash na URL)
+  // Detectar se estamos em um fluxo de convite/reset (query ou hash na URL)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
-    const type = params.get('type')
-    
-    console.log('[NovaSenhaPage] URL params:', { code, type, hasUser: !!user })
-    
-    if (code || type === 'invite' || type === 'recovery') {
+    const hash = window.location.hash.replace(/^#/, '')
+    const hashParams = new URLSearchParams(hash)
+
+    const authParams = {
+      code: params.get('code') || hashParams.get('code'),
+      type: params.get('type') || hashParams.get('type'),
+      access_token: params.get('access_token') || hashParams.get('access_token'),
+      refresh_token: params.get('refresh_token') || hashParams.get('refresh_token'),
+      token: params.get('token') || hashParams.get('token'),
+      token_hash: params.get('token_hash') || hashParams.get('token_hash'),
+      error_description:
+        params.get('error_description') || hashParams.get('error_description'),
+    }
+
+    const hasAuthParams = Object.values(authParams).some(Boolean)
+    console.log('[NovaSenhaPage] URL callback params:', { authParams, hasUser: !!user })
+
+    if (hasAuthParams) {
       setTemToken(true)
-      console.log('[NovaSenhaPage] Token de convite/recuperação detectado')
+      console.log('[NovaSenhaPage] Fluxo de convite/recuperação detectado, preservando página')
+
+      const getSessionFromUrl = (supabase.auth as any).getSessionFromUrl
+      if (typeof getSessionFromUrl === 'function') {
+        getSessionFromUrl()
+          .then((result: any) => {
+            console.log('[NovaSenhaPage] getSessionFromUrl resultado:', result)
+            if (result?.error) setCallbackError(result.error.message || 'Erro ao processar callback')
+          })
+          .catch((err: unknown) => {
+            console.error('[NovaSenhaPage] getSessionFromUrl exceção:', err)
+            setCallbackError(String(err))
+          })
+      }
+
       return
     }
-    
-    // Só redirecionar se NÃO tem token e NÃO tem usuário após 3 segundos
+
     const timer = setTimeout(() => {
       if (!user) {
-        console.log('[NovaSenhaPage] Sem token e sem usuário, redirecionando para /login')
+        console.log('[NovaSenhaPage] Sem callback de auth e sem usuário, redirecionando para /login')
         router.push('/login')
       }
     }, 3000)
     return () => clearTimeout(timer)
-  }, [user])
+  }, [user, router, supabase.auth])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
