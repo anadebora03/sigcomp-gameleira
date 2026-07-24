@@ -114,7 +114,7 @@ export default function App() {
             {page==='pesquisas'   && <PesquisasPage {...pp}/>}
             {page==='secretarias' && <SecretariasPage oficios={store.oficios} processos={store.processos} secretarias={store.secretarias}/>}
             {page==='alertas'     && <AlertasPage  oficios={store.oficios}/>}
-            {page==='relatorios'  && <RelatoriosPage oficios={store.oficios} processos={store.processos} pesquisas={store.pesquisas} toast={showToast}/>}
+            {page==='relatorios'  && <RelatoriosPage oficios={store.oficios} processos={store.processos} pesquisas={store.pesquisas} secretarias={store.secretarias} usuarios={store.usuarios} toast={showToast}/>}
             {page==='usuarios'    && <UsuariosPage  {...pp}/>}
             {page==='logs'        && <LogsPage      logs={store.logs}/>}
           </div>

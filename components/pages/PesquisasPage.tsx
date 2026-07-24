@@ -7,7 +7,7 @@ import {gS,gT,uid} from '@/utils/helpers'
 import {useUpload} from '@/hooks/useUpload'
 import ARow from '@/components/ui/ARow'
 import {deleteArquivo,getSignedUrl} from '@/lib/storage'
-import {td,fD,fR,fKB,fmtM,nPq} from '@/utils/formatters'
+import {td,fD,fR,fKB,fmtM,nPq,parseCurrencyInput} from '@/utils/formatters'
 
 
 // ── PesquisaForm ───────────────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ function PesquisaForm({initial,oficios,pesquisas,onSave,onClose}:any){
   const addForn=()=>up('fornecedores',[...f.fornecedores,{id:uid(),nome:'',cnpj:'',email:'',telefone:'',valor:'',obs:'',arquivos:[]}])
   const upForn=(id:number,k:string,v:any)=>up('fornecedores',f.fornecedores.map((x:any)=>x.id===id?{...x,[k]:v}:x))
   const delForn=(id:number)=>up('fornecedores',f.fornecedores.filter((x:any)=>x.id!==id))
-  const vals=f.fornecedores.map((x:any)=>Number(x.valor||0)).filter((v:number)=>v>0)
+  const vals=f.fornecedores.map((x:any)=>parseCurrencyInput(x.valor)).filter((v:number)=>v>0)
   const menorV=vals.length>0?Math.min(...vals):0
   function save(){if(!f.objeto.trim()){alert('Preencha o objeto.');return}
     const payload = { ...f, secretaria_id: Number(f.secretaria_id), ...(f.id ? { id: f.id } : {}) }
@@ -74,7 +74,7 @@ function PesquisaForm({initial,oficios,pesquisas,onSave,onClose}:any){
           </button>
         </div>
         {f.fornecedores.map((forn:any,idx:number)=>{
-          const isMin=Number(forn.valor||0)===menorV&&menorV>0
+          const isMin=parseCurrencyInput(forn.valor)===menorV&&menorV>0
           return(
             <div key={forn.id} style={{background:'var(--inp)',borderRadius:10,padding:'12px 13px',marginBottom:8,border:`1.5px solid ${isMin?'#86efac':'var(--brd)'}`}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:9}}>
@@ -94,7 +94,7 @@ function PesquisaForm({initial,oficios,pesquisas,onSave,onClose}:any){
               </div>
               <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:9,marginBottom:9}}>
                 <Fld label="Obs. Rápida"><input style={IS} value={forn.obs} placeholder="Condições, prazo de entrega..." onFocus={oF} onBlur={oB} onChange={e=>upForn(forn.id,'obs',e.target.value)}/></Fld>
-                <Fld label="Valor Cotado (R$)"><input style={{...IS,fontWeight:isMin?800:400,color:isMin?'#059669':'var(--txt)'} as any} type="number" step="0.01" value={forn.valor} placeholder="0,00" onFocus={oF} onBlur={oB} onChange={e=>upForn(forn.id,'valor',e.target.value)}/></Fld>
+                <Fld label="Valor Cotado (R$)"><input style={{...IS,fontWeight:isMin?800:400,color:isMin?'#059669':'var(--txt)'} as any} value={forn.valor} placeholder="0,00" onFocus={oF} onBlur={oB} onChange={e=>upForn(forn.id,'valor',e.target.value.replace(/[^\d,.-]/g,''))}/></Fld>
               </div>
               {/* Anexo orçamento */}
               <div style={{marginTop:10}}>
@@ -150,7 +150,7 @@ function PesquisaDetail({pq,onClose,onEdit}:any){
   const[tab,setTab]=useState('det')
   const sec=gS(pq.secretaria_id)
   const st=gT(SPQ,pq.status)
-  const vals=pq.fornecedores.map((x:any)=>Number(x.valor||0)).filter((v:number)=>v>0)
+  const vals=pq.fornecedores.map((x:any)=>parseCurrencyInput(x.valor)).filter((v:number)=>v>0)
   const menorV=vals.length>0?Math.min(...vals):0
   const TABS=[{id:'det',l:'Detalhes',n:'file'},{id:'cot',l:`Cotações (${pq.fornecedores.length})`,n:'coins'},{id:'doc',l:`Docs (${(pq.anexos||[]).length})`,n:'clip'}]
   return(
@@ -188,7 +188,7 @@ function PesquisaDetail({pq,onClose,onEdit}:any){
       {tab==='cot'&&(
         <div style={{display:'flex',flexDirection:'column',gap:9}}>
           {pq.fornecedores.map((forn:any,i:number)=>{
-            const isMin=Number(forn.valor||0)===menorV&&menorV>0
+            const isMin=parseCurrencyInput(forn.valor)===menorV&&menorV>0
             return(
               <div key={forn.id||i} style={{background:'var(--inp)',borderRadius:11,padding:'12px 14px',border:`1.5px solid ${isMin?'#86efac':'var(--brd)'}`}}>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
@@ -289,7 +289,7 @@ export default function PesquisasPage({pesquisas,oficios,savePesquisa,deletePesq
               {filtered.length===0&&<tr><td colSpan={8} style={{padding:'40px 14px',textAlign:'center',color:'var(--muted)',fontSize:13}}>Nenhuma pesquisa.</td></tr>}
               {filtered.map((p:any)=>{
                 const st=gT(SPQ,p.status)
-                const vals=p.fornecedores.map((x:any)=>Number(x.valor||0)).filter((v:number)=>v>0)
+                const vals=p.fornecedores.map((x:any)=>parseCurrencyInput(x.valor)).filter((v:number)=>v>0)
                 const menor=vals.length>0?Math.min(...vals):0
                 return(
                   <tr key={p.id} style={{borderBottom:'1px solid var(--brd)',transition:'background .1s'}}

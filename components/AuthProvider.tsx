@@ -8,12 +8,15 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  const [supabase, setSupabase] = useState<any>(null)
 
   useEffect(() => {
+    const client = createClient()
+    setSupabase(client)
+
     // Get initial session
     console.log('[AuthProvider] Inicializando...')
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    client.auth.getSession().then(({ data: { session } }) => {
       console.log('[AuthProvider] getSession retornou:', { 
         hasSession: !!session, 
         user: session?.user?.id,
@@ -25,7 +28,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
       console.log('[AuthProvider] onAuthStateChange:', { 
         event: _event,
         hasSession: !!session, 
@@ -41,23 +44,27 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, [])
 
   async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const client = supabase ?? createClient()
+    const { error } = await client.auth.signInWithPassword({ email, password })
     return { error: error?.message ?? null }
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    const client = supabase ?? createClient()
+    await client.auth.signOut()
   }
 
   async function resetPassword(email: string) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const client = supabase ?? createClient()
+    const { error } = await client.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/nova-senha`,
     })
     return { error: error?.message ?? null }
   }
 
   async function updatePassword(password: string) {
-    const { error } = await supabase.auth.updateUser({ password })
+    const client = supabase ?? createClient()
+    const { error } = await client.auth.updateUser({ password })
     return { error: error?.message ?? null }
   }
 

@@ -1,7 +1,29 @@
 export const td=()=>new Date().toISOString().split('T')[0]
 export const fD=(d?:string)=>d?new Date(d+'T12:00:00').toLocaleDateString('pt-BR'):'--'
 export const fDT=(d?:string)=>d?new Date(d).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'--'
-export const fR=(v?:string|number)=>v?Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'--'
+
+export function parseCurrencyInput(value: unknown): number {
+  if (value === null || value === undefined || value === '') return 0
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
+
+  const text = String(value).trim()
+  if (!text) return 0
+
+  const normalized = text
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\.(?=\d{3}(?:\D|$))/g, '')
+    .replace(',', '.')
+
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+export function formatCurrency(value: unknown, options?: Intl.NumberFormatOptions) {
+  const numeric = parseCurrencyInput(value)
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', ...options }).format(numeric)
+}
+
+export const fR=(v?:string|number)=>v!==undefined&&v!==null&&v!==''?formatCurrency(v):'--'
 export const fKB=(b?:number)=>!b?'0 KB':b>1048576?`${(b/1048576).toFixed(1)} MB`:`${(b/1024).toFixed(0)} KB`
 export const fmtM=(m?:string)=>{
   if(!m)return'--'

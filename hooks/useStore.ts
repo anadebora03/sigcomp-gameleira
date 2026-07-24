@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { SECS } from '@/lib/constants'
 import type { Oficio, Processo, Pesquisa, Usuario, Log, Secretaria } from '@/lib/types'
 import { createLog, listLogs, listOficios, saveOficio as persistOficio, deleteOficio as removeOficio, listProcessos, saveProcesso as persistProcesso, deleteProcesso as removeProcesso, listPesquisas, savePesquisa as persistPesquisa, deletePesquisa as removePesquisa, listSecretarias } from '@/services/data'
+import { listUsers } from '@/services/auth'
 
 export function useStore() {
   const [oficios, setOficios] = useState<Oficio[]>([])
@@ -18,12 +19,13 @@ export function useStore() {
       console.log('[store] iniciando carregamento de dados...')
       setError(null)
 
-      const [oficiosRes, processosRes, pesquisasRes, logsRes, secretariasRes] = await Promise.all([
+      const [oficiosRes, processosRes, pesquisasRes, logsRes, secretariasRes, usersRes] = await Promise.all([
         listOficios(),
         listProcessos(),
         listPesquisas(),
         listLogs(),
         listSecretarias(),
+        listUsers(100),
       ])
 
       // Ofícios
@@ -69,6 +71,24 @@ export function useStore() {
       } else {
         console.error('[store] erro ao carregar secretarias:', secretariasRes.error)
         setError(secretariasRes.error || 'Erro ao carregar secretarias')
+      }
+
+      // Usuários
+      if (usersRes.success && usersRes.data) {
+        console.log('[store] usuários carregados:', usersRes.data.length)
+        setUsuarios(usersRes.data.map((user: any) => ({
+          id: user.id,
+          nome: user.nome || user.nome_completo || user.display_name || user.email || 'Usuário',
+          cargo: user.cargo || '',
+          email: user.email || '',
+          perfil: user.perfil || 'visualizador',
+          ativo: user.status !== 'bloqueado',
+          avatar: '',
+          status: user.status || 'ativo',
+          permissoes: user.permissoes || {},
+        })))
+      } else {
+        console.error('[store] erro ao carregar usuários:', usersRes.error)
       }
 
       console.log('[store] carregamento concluído')

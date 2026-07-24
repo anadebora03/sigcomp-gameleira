@@ -8,15 +8,25 @@ import {SECS,SPL,MOD,MESES} from '@/lib/constants'
 import {gS,gT,uid} from '@/utils/helpers'
 import {useUpload} from '@/hooks/useUpload'
 import {deleteArquivo,getSignedUrl,downloadBlobFromUrl} from '@/lib/storage'
-import {td,fD,fR,fKB,fmtM,nPl} from '@/utils/formatters'
+import {td,fD,fR,fKB,fmtM,nPl,parseCurrencyInput,formatCurrency} from '@/utils/formatters'
 
 
 function PlForm({ini,pls,onSave,onClose}:any){
   const{uploadFiles:upFiles,uploading:uploading,erros:upErros}=useUpload({modulo:'processos',vinculo:ini?.numero||'novo',secretaria_id:1})
   const[f,sf]=useState(ini||{numero:nPl(pls),secretaria_id:1,modalidade:'pregao_eletronico',assunto:'',status:'solicitado',data_abertura:td(),data_prevista:'',responsavel:'',valor_estimado:'',valor_final:'',obs:'',anexos:[],contrato:null})
   const up=(k:string,v:any)=>sf((p:any)=>({...p,[k]:v}))
+  const handleMoneyChange = (key: string, value: string) => {
+    const cleaned = value.replace(/[^\d,.-]/g, '')
+    up(key, cleaned)
+  }
   function sv(){if(!f.assunto.trim()){alert('Preencha o assunto.');return}
-    const payload = { ...f, secretaria_id: Number(f.secretaria_id), ...(f.id ? { id: f.id } : {}) }
+    const payload = {
+      ...f,
+      secretaria_id: Number(f.secretaria_id),
+      valor_estimado: parseCurrencyInput(f.valor_estimado),
+      valor_final: parseCurrencyInput(f.valor_final),
+      ...(f.id ? { id: f.id } : {})
+    }
     onSave(payload)
   }
   async function addAnexos(files:File[]){const n=await upFiles(files);if(n.length)up('anexos',[...(f.anexos||[]),...n])}
@@ -49,8 +59,8 @@ function PlForm({ini,pls,onSave,onClose}:any){
         <Fld label="Responsável"><input style={IS} value={f.responsavel} onFocus={oF} onBlur={oB} onChange={e=>up('responsavel',e.target.value)}/></Fld>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-        <Fld label="Valor Estimado (R$)"><input style={IS} type="number" value={f.valor_estimado} placeholder="0,00" onFocus={oF} onBlur={oB} onChange={e=>up('valor_estimado',e.target.value)}/></Fld>
-        <Fld label="Valor Final (R$)"><input style={IS} type="number" value={f.valor_final} placeholder="0,00 — após homologação" onFocus={oF} onBlur={oB} onChange={e=>up('valor_final',e.target.value)}/></Fld>
+        <Fld label="Valor Estimado (R$)"><input style={IS} value={f.valor_estimado} placeholder="0,00" onFocus={oF} onBlur={oB} onChange={e=>handleMoneyChange('valor_estimado',e.target.value)}/></Fld>
+        <Fld label="Valor Final (R$)"><input style={IS} value={f.valor_final} placeholder="0,00 — após homologação" onFocus={oF} onBlur={oB} onChange={e=>handleMoneyChange('valor_final',e.target.value)}/></Fld>
       </div>
       <div style={{border:'1px solid var(--brd)',borderRadius:12,padding:'12px 14px'}}>
         <p style={{fontSize:10,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',marginBottom:10}}>Documentos do Processo</p>
@@ -72,6 +82,10 @@ function ProcessoDetail({proc,setProcessos,onClose,onEdit,onSaveContrato,savePro
   const ct=proc.contrato||{}
   const[f,sf]=useState({empresa:ct.empresa||'',cnpj:ct.cnpj||'',responsavel:ct.responsavel||'',email:ct.email||'',telefone:ct.telefone||'',numero_contrato:ct.numero_contrato||'',data_assinatura:ct.data_assinatura||'',data_vigencia:ct.data_vigencia||'',objeto:ct.objeto||proc.assunto||'',valor:ct.valor||proc.valor_final||'',obs:ct.obs||'',arquivos:ct.arquivos||[]})
   const up=(k:string,v:any)=>sf((p:any)=>({...p,[k]:v}))
+  const handleMoneyChange = (key: string, value: string) => {
+    const cleaned = value.replace(/[^\d,.-]/g, '')
+    up(key, cleaned)
+  }
   const fileRef=useRef<HTMLInputElement>(null)
   async function pickPDFs(e:any){const files=Array.from(e.target.files as FileList);if(!files.length)return;const n=await upCont(files);if(n.length)up('arquivos',[...f.arquivos,...n]);e.target.value=''}
   async function downloadArq(arq:any){
@@ -131,8 +145,8 @@ function ProcessoDetail({proc,setProcessos,onClose,onEdit,onSaveContrato,savePro
       </div>
       <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
         <Sb v={proc.status} list={SPL}/>
-        {proc.valor_estimado&&<span style={{color:'#059669',background:'#f0fdf4',border:'1px solid #86efac',padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:700}}>Est: {fR(proc.valor_estimado)}</span>}
-        {proc.valor_final&&<span style={{color:'#0369a1',background:'#eff6ff',border:'1px solid #bfdbfe',padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:800}}>Final: {fR(proc.valor_final)}</span>}
+        {proc.valor_estimado!==undefined&&proc.valor_estimado!==null&&proc.valor_estimado!==''&&<span style={{color:'#059669',background:'#f0fdf4',border:'1px solid #86efac',padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:700}}>Est: {fR(proc.valor_estimado)}</span>}
+        {proc.valor_final!==undefined&&proc.valor_final!==null&&proc.valor_final!==''&&<span style={{color:'#0369a1',background:'#eff6ff',border:'1px solid #bfdbfe',padding:'3px 9px',borderRadius:999,fontSize:10,fontWeight:800}}>Final: {fR(proc.valor_final)}</span>}
       </div>
       <div style={{display:'flex',borderBottom:'1px solid var(--brd)'}}>
         {TABS.map(t=>(
@@ -191,7 +205,7 @@ function ProcessoDetail({proc,setProcessos,onClose,onEdit,onSaveContrato,savePro
             </div>
             <div style={{marginTop:12,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <Fld label="Objeto do Contrato"><input style={IS} value={f.objeto} onFocus={oF} onBlur={oB} onChange={e=>up('objeto',e.target.value)}/></Fld>
-              <Fld label="Valor do Contrato (R$)"><input style={IS} type="number" value={f.valor} placeholder="0,00" onFocus={oF} onBlur={oB} onChange={e=>up('valor',e.target.value)}/></Fld>
+              <Fld label="Valor do Contrato (R$)"><input style={IS} value={f.valor} placeholder="0,00" onFocus={oF} onBlur={oB} onChange={e=>handleMoneyChange('valor',e.target.value)}/></Fld>
             </div>
           </div>
           <div style={{border:'1px solid var(--brd)',borderRadius:12,padding:'14px 16px'}}>
@@ -278,7 +292,7 @@ export default function ProcessosPage({processos,setProcessos,saveProcesso,delet
                     <td style={{padding:'10px 14px',fontSize:11,color:'var(--muted)',whiteSpace:'nowrap'}}>{MOD[p.modalidade]||p.modalidade}</td>
                     <td style={{padding:'10px 14px',fontSize:11,color:'var(--muted)',whiteSpace:'nowrap'}}>{p.responsavel||'--'}</td>
                     <td style={{padding:'10px 14px',fontSize:11,fontWeight:700,color:'#059669',whiteSpace:'nowrap'}}>{fR(p.valor_estimado)}</td>
-                    <td style={{padding:'10px 14px',fontSize:11,fontWeight:700,color:'#0369a1',whiteSpace:'nowrap'}}>{p.valor_final?fR(p.valor_final):<span style={{color:'var(--muted)'}}>--</span>}</td>
+                    <td style={{padding:'10px 14px',fontSize:11,fontWeight:700,color:'#0369a1',whiteSpace:'nowrap'}}>{p.valor_final!==undefined&&p.valor_final!==null&&p.valor_final!==''?fR(p.valor_final):<span style={{color:'var(--muted)'}}>--</span>}</td>
                     <td style={{padding:'10px 14px',whiteSpace:'nowrap'}}><span style={{color:st.bg,background:st.cor,border:`1px solid ${st.cor}`,padding:'2px 8px',borderRadius:999,fontSize:9,fontWeight:700,display:'inline-block'}}>{st.l}</span></td>
                     <td style={{padding:'10px 14px',textAlign:'center'}}>
                       {p.contrato&&p.contrato.empresa
