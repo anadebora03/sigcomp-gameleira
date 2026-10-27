@@ -58,7 +58,7 @@ export default function App() {
 
   // If no user after loading, middleware will redirect — show nothing
   if (loading) return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg)', fontFamily:'system-ui,sans-serif' }}>
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg)', fontFamily:'var(--font-sans),system-ui,sans-serif' }}>
       <div style={{ textAlign:'center' }}>
         <div style={{ width:44, height:44, border:'3px solid #1a5c38', borderTopColor:'transparent', borderRadius:'50%', margin:'0 auto 16px', animation:'spin 1s linear infinite' }}/>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
@@ -86,7 +86,7 @@ export default function App() {
   const pp = { ...store, toast: showToast }
 
   return (
-    <div style={{ fontFamily:'system-ui,sans-serif', display:'flex', height:'100dvh', overflow:'hidden', background:'var(--bg)' }}>
+    <div style={{ fontFamily:'var(--font-sans),system-ui,sans-serif', display:'flex', height:'100dvh', overflow:'hidden', background:'var(--bg)' }}>
       {/* Modal portal */}
       <div id="modal-root" style={{ position:'fixed',top:0,left:0,width:'100vw',height:'100vh',pointerEvents:'none',zIndex:99999 }}>
         <style>{`#modal-root>*{pointer-events:all}@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}`}</style>
