@@ -111,12 +111,18 @@ export default function App() {
 
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
         <main style={{ flex:1, overflowY:'auto', padding:mob?'12px 11px':'18px 22px', paddingBottom:mob?74:18 }}>
+          {/* Título da aba: faixa verde colada na sidebar (margem negativa anula o padding do main), com a ponta direita arredondada */}
+          {page !== 'dashboard' && (
+            <div style={{ display:'flex', alignItems:'center', gap:8, width:'fit-content', maxWidth:'100%', margin:mob?'0 0 16px -11px':'0 0 18px -22px', padding:mob?'10px 26px 10px 11px':'12px 40px 12px 22px', background:'linear-gradient(90deg,#0d3d22,#1a5c38)', borderRadius:'0 999px 999px 0', boxShadow:'0 4px 14px rgba(13,61,34,.18)' }}>
+              {mob && <button onClick={() => setMobMenu(true)} title="Abrir menu" style={{ padding:4, marginLeft:-4, borderRadius:8, border:'none', background:'transparent', cursor:'pointer', display:'flex' }}><Ic n="menu" z={20} c="#fff"/></button>}
+              <h1 style={{ fontSize:mob?16:19, fontWeight:900, color:'#fff', lineHeight:1.2 }}>{PAGE_TITLES[page]}</h1>
+            </div>
+          )}
           <div style={{ animation:'fadeUp .3s ease both', maxWidth:1400, margin:'0 auto' }}>
-            {/* Título da aba (sem barra); no Dashboard a saudação já faz esse papel */}
-            {(mob || page !== 'dashboard') && (
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
-                {mob && <button onClick={() => setMobMenu(true)} title="Abrir menu" style={{ padding:6, marginLeft:-6, borderRadius:9, border:'none', background:'transparent', cursor:'pointer', color:'var(--muted)', display:'flex' }}><Ic n="menu" z={20}/></button>}
-                {page !== 'dashboard' && <h1 style={{ fontSize:mob?17:20, fontWeight:900, color:'var(--txt)', lineHeight:1.2 }}>{PAGE_TITLES[page]}</h1>}
+            {/* No Dashboard a saudação faz o papel do título; no celular só o botão do menu */}
+            {mob && page === 'dashboard' && (
+              <div style={{ display:'flex', alignItems:'center', marginBottom:16 }}>
+                <button onClick={() => setMobMenu(true)} title="Abrir menu" style={{ padding:6, marginLeft:-6, borderRadius:9, border:'none', background:'transparent', cursor:'pointer', color:'var(--muted)', display:'flex' }}><Ic n="menu" z={20}/></button>
               </div>
             )}
             {page==='dashboard'   && <Dashboard   nome={perfil.nome} cargo={perfil.perfil?.cargo} fotoUrl={perfil.fotoUrl} oficios={store.oficios} processos={store.processos} pesquisas={store.pesquisas}/>}
