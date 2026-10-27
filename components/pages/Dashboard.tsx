@@ -18,7 +18,7 @@ function useClock() {
   return now
 }
 
-function ClockBar({ saudacao, nomeUsuario, fotoUrl }: { saudacao: string; nomeUsuario: string; fotoUrl?: string | null }) {
+function ClockBar({ saudacao, nomeUsuario, cargo, fotoUrl }: { saudacao: string; nomeUsuario: string; cargo?: string | null; fotoUrl?: string | null }) {
   const now = useClock()
   const dias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
   const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -34,6 +34,7 @@ function ClockBar({ saudacao, nomeUsuario, fotoUrl }: { saudacao: string; nomeUs
         </div>
         <div>
           <p style={{ fontSize: 16, fontWeight: 900, color: '#fff', margin: 0, lineHeight: 1.1 }}>{nomeUsuario ? `${saudacao}, ${nomeUsuario}!` : `${saudacao}!`}</p>
+          {cargo && <p style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,.9)', margin: '4px 0 0' }}>{cargo}</p>}
           <p style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', margin: '8px 0 0', maxWidth: 420, lineHeight: 1.4 }}>Painel principal com dados de ofícios, processos e pesquisas de preço.</p>
         </div>
       </div>
@@ -46,7 +47,7 @@ function ClockBar({ saudacao, nomeUsuario, fotoUrl }: { saudacao: string; nomeUs
   )
 }
 
-export default function Dashboard({ nome, fotoUrl, oficios, processos, pesquisas }: any) {
+export default function Dashboard({ nome, cargo, fotoUrl, oficios, processos, pesquisas }: any) {
   const mob = useMob()
 
   const now = new Date()
@@ -70,7 +71,7 @@ export default function Dashboard({ nome, fotoUrl, oficios, processos, pesquisas
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <ClockBar saudacao={saudacao} nomeUsuario={nome || ''} fotoUrl={fotoUrl} />
+      <ClockBar saudacao={saudacao} nomeUsuario={nome || ''} cargo={cargo} fotoUrl={fotoUrl} />
       <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr 1fr' : 'repeat(6,1fr)', gap: 12 }}>
         {cards.map((c, i) => (
           <div key={i} style={{ background: `linear-gradient(135deg,${c.g})`, borderRadius: 16, padding: 16, color: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,.15)', animation: `fadeUp .4s ease ${i * .06}s both` }}>
