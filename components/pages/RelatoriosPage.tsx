@@ -1,11 +1,14 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { Card, Ic, G, NAVY } from '@/components/ui/atoms'
+import { Card, Ic, G, NAVY, IS, oF, oB } from '@/components/ui/atoms'
 import { SECS } from '@/lib/constants'
 import { formatCurrency, parseCurrencyInput } from '@/utils/formatters'
 import { buildReport, downloadCsvReport, openPrintableReport } from '@/utils/reports'
 import { usePermissions } from '@/hooks/usePermissions'
 import { SOF } from '@/utils/ordens'
+
+// mesmo padrão dos filtros das outras abas (ex.: Ordens de Fornecimento)
+const fil: React.CSSProperties = { ...IS, fontSize: 12, padding: '9px 10px' }
 
 const REPORT_TYPES = [
   { key: 'oficios', nome: 'Ofícios', cor: '#1a5c38', icon: 'building' },
@@ -92,15 +95,15 @@ export default function RelatoriosPage({ oficios, processos, pesquisas, ordens =
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label style={{ fontSize: 10, fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Data inicial</label>
-            <input type="date" value={filters.startDate} onChange={(e) => setFilters((prev) => ({ ...prev, startDate: e.target.value }))} style={{ border: '1px solid var(--brd)', borderRadius: 8, padding: '8px 10px', background: 'var(--inp)', color: 'var(--txt)' }} />
+            <input type="date" value={filters.startDate} onChange={(e) => setFilters((prev) => ({ ...prev, startDate: e.target.value }))} style={{ ...fil, width: 138 }} onFocus={oF} onBlur={oB} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label style={{ fontSize: 10, fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Data final</label>
-            <input type="date" value={filters.endDate} onChange={(e) => setFilters((prev) => ({ ...prev, endDate: e.target.value }))} style={{ border: '1px solid var(--brd)', borderRadius: 8, padding: '8px 10px', background: 'var(--inp)', color: 'var(--txt)' }} />
+            <input type="date" value={filters.endDate} onChange={(e) => setFilters((prev) => ({ ...prev, endDate: e.target.value }))} style={{ ...fil, width: 138 }} onFocus={oF} onBlur={oB} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label style={{ fontSize: 10, fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Status</label>
-            <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} style={{ border: '1px solid var(--brd)', borderRadius: 8, padding: '8px 10px', background: 'var(--inp)', color: 'var(--txt)' }}>
+            <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} style={{ ...fil, width: 140 }} onFocus={oF} onBlur={oB}>
               <option value="">Todos</option>
               {activeType === 'ordens' ? SOF.map((s) => <option key={s.v} value={s.v}>{s.l}</option>) : <>
               <option value="pendente">Pendente</option>
@@ -114,7 +117,7 @@ export default function RelatoriosPage({ oficios, processos, pesquisas, ordens =
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label style={{ fontSize: 10, fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Secretaria</label>
-            <select value={filters.secretaria} onChange={(e) => setFilters((prev) => ({ ...prev, secretaria: e.target.value }))} style={{ border: '1px solid var(--brd)', borderRadius: 8, padding: '8px 10px', background: 'var(--inp)', color: 'var(--txt)' }}>
+            <select value={filters.secretaria} onChange={(e) => setFilters((prev) => ({ ...prev, secretaria: e.target.value }))} style={{ ...fil, width: 170 }} onFocus={oF} onBlur={oB}>
               <option value="">Todas</option>
               {SECS.map((sec: any) => <option key={sec.id} value={sec.id}>{sec.nome}</option>)}
             </select>
