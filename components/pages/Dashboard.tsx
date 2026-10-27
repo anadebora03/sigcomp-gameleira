@@ -34,8 +34,7 @@ function ClockBar({ saudacao, nomeUsuario, cargo, fotoUrl }: { saudacao: string;
         </div>
         <div>
           <p style={{ fontSize: 16, fontWeight: 900, color: '#fff', margin: 0, lineHeight: 1.1 }}>{nomeUsuario ? `${saudacao}, ${nomeUsuario}!` : `${saudacao}!`}</p>
-          {cargo && <p style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,.9)', margin: '4px 0 0' }}>{cargo}</p>}
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', margin: '8px 0 0', maxWidth: 420, lineHeight: 1.4 }}>Painel principal com dados de ofícios, processos e pesquisas de preço.</p>
+          {cargo && <p style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', margin: '8px 0 0', maxWidth: 420, lineHeight: 1.4 }}>{cargo}</p>}
         </div>
       </div>
       <div style={{ textAlign: 'right', minWidth: 180 }}>
