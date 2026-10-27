@@ -21,12 +21,11 @@ interface Props {
   alertCount: number
   setPage: (p: PageId) => void
   setDark: (d: boolean) => void
-  onLogout: () => void
   onCollapse?: () => void
   onClose?: () => void
 }
 
-export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, onLogout, onCollapse, onClose, alertCount }: Props) {
+export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, onCollapse, onClose, alertCount }: Props) {
   const show = !mini || mobile
   const { tem, isAdminOrDirector } = usePermissions()
 
@@ -109,14 +108,6 @@ export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, on
           onMouseEnter={e => { (e.currentTarget as any).style.background='rgba(255,255,255,.08)'; (e.currentTarget as any).style.opacity='1' }}
           onMouseLeave={e => { (e.currentTarget as any).style.background='transparent'; (e.currentTarget as any).style.opacity='.5' }}>
           <Ic n={dark?'sun':'moon'} z={16}/>{show && (dark?'Modo Claro':'Modo Escuro')}
-        </button>
-
-        {/* Logout */}
-        <button onClick={onLogout}
-          style={{ display:'flex', alignItems:'center', gap:10, padding:show?'9px 10px':'9px', borderRadius:10, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit', fontSize:12, fontWeight:700, color:'#fca5a5', opacity:.8, width:'100%', justifyContent:show?'flex-start':'center' }}
-          onMouseEnter={e => { (e.currentTarget as any).style.background='rgba(220,38,38,.15)'; (e.currentTarget as any).style.opacity='1' }}
-          onMouseLeave={e => { (e.currentTarget as any).style.background='transparent'; (e.currentTarget as any).style.opacity='.8' }}>
-          <Ic n="logout" z={16} c="#fca5a5"/>{show && 'Sair'}
         </button>
       </div>
     </>

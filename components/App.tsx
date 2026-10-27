@@ -98,14 +98,14 @@ export default function App() {
       {/* Mobile sidebar */}
       {mob && mobMenu && (
         <aside style={{ position:'fixed',inset:'0 auto 0 0',width:256,background:'var(--sb)',display:'flex',flexDirection:'column',zIndex:50 }}>
-          <Sidebar mini={false} mobile page={page} setPage={p => { setPage(p); setMobMenu(false) }} dark={dark} setDark={setDark} onLogout={handleLogout} alertCount={alertCount} onClose={() => setMobMenu(false)}/>
+          <Sidebar mini={false} mobile page={page} setPage={p => { setPage(p); setMobMenu(false) }} dark={dark} setDark={setDark} alertCount={alertCount} onClose={() => setMobMenu(false)}/>
         </aside>
       )}
 
       {/* Desktop sidebar */}
       {!mob && (
         <aside style={{ width:sideOpen?228:60, flexShrink:0, transition:'width .25s ease', background:'var(--sb)', borderRight:'1px solid var(--sbb)', display:'flex', flexDirection:'column', overflow:'hidden', zIndex:30 }}>
-          <Sidebar mini={!sideOpen} mobile={false} page={page} setPage={setPage} dark={dark} setDark={setDark} onLogout={handleLogout} alertCount={alertCount} onCollapse={() => setSideOpen(false)}/>
+          <Sidebar mini={!sideOpen} mobile={false} page={page} setPage={setPage} dark={dark} setDark={setDark} alertCount={alertCount} onCollapse={() => setSideOpen(false)}/>
         </aside>
       )}
 
