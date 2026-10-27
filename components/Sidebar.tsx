@@ -18,7 +18,7 @@ const NAV = [
 
 interface Props {
   mini: boolean; mobile: boolean; page: PageId; dark: boolean
-  alertCount: number; userEmail?: string; userName?: string
+  alertCount: number
   setPage: (p: PageId) => void
   setDark: (d: boolean) => void
   onLogout: () => void
@@ -26,7 +26,7 @@ interface Props {
   onClose?: () => void
 }
 
-export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, onLogout, onCollapse, onClose, alertCount, userEmail, userName }: Props) {
+export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, onLogout, onCollapse, onClose, alertCount }: Props) {
   const show = !mini || mobile
   const { tem, isAdminOrDirector } = usePermissions()
 
@@ -103,17 +103,6 @@ export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, on
 
       {/* Footer */}
       <div style={{ padding:'9px 7px', borderTop:'1px solid var(--sbb)', display:'flex', flexDirection:'column', gap:2 }}>
-        {/* User info */}
-        {show && userEmail && (
-          <div style={{ padding:'8px 10px', marginBottom:4 }}>
-            <div style={{ width:30, height:30, borderRadius:8, background:'rgba(255,255,255,.15)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:5 }}>
-              <Ic n="person" z={15} c="var(--sbf)"/>
-            </div>
-            {userName && <p style={{ fontSize:11, fontWeight:800, color:'var(--sbf)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{userName}</p>}
-            <p style={{ fontSize:9, color:'var(--sbf)', opacity:.5, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{userEmail}</p>
-          </div>
-        )}
-
         {/* Dark mode */}
         <button onClick={() => setDark(!dark)}
           style={{ display:'flex', alignItems:'center', gap:10, padding:show?'9px 10px':'9px', borderRadius:10, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit', fontSize:12, fontWeight:700, color:'var(--sbf)', opacity:.5, width:'100%', justifyContent:show?'flex-start':'center' }}

@@ -5,8 +5,6 @@ import { SECS, STO } from '@/lib/constants'
 import { gS } from '@/utils/helpers'
 import { fD, isOv, isSn } from '@/utils/formatters'
 import UserAvatar from '@/components/ui/UserAvatar'
-import { usePermissions } from '@/hooks/usePermissions'
-import { resumoOF } from '@/utils/ordens'
 
 function useMob() {
   const [w, sw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1280)
@@ -48,9 +46,8 @@ function ClockBar({ saudacao, nomeUsuario, fotoUrl }: { saudacao: string; nomeUs
   )
 }
 
-export default function Dashboard({ nome, fotoUrl, oficios, processos, pesquisas, ordens = [] }: any) {
+export default function Dashboard({ nome, fotoUrl, oficios, processos, pesquisas }: any) {
   const mob = useMob()
-  const { tem } = usePermissions()
 
   const now = new Date()
   const hour = now.getHours()
@@ -67,15 +64,6 @@ export default function Dashboard({ nome, fotoUrl, oficios, processos, pesquisas
     { l: 'Processos', v: processos.length, g: '#0a1628,#0F1E3A', i: 'gavel' },
     { l: 'Pesquisas de Preço', v: pesquisas.length, g: '#1a5c38,#22744a', i: 'check_sq' },
     { l: 'Atrasados', v: at.length, g: '#7a5a00,#c9a227', i: 'clock' },
-  ]
-  const rOF = resumoOF(ordens)
-  const cardsOF = [
-    { l: 'Total', v: rOF.total, cor: G },
-    { l: 'Pendentes', v: rOF.pendente, cor: '#1e3a5f' },
-    { l: 'Próximas do vencimento', v: rOF.proximo, cor: '#a07800' },
-    { l: 'Vencendo hoje', v: rOF.hoje, cor: '#ea580c' },
-    { l: 'Atrasadas', v: rOF.atrasado, cor: '#dc2626' },
-    { l: 'Entregues', v: rOF.entregue, cor: '#065f46' },
   ]
   const bySec = SECS.map(s => ({ ...s, n: oficios.filter((o: any) => o.secretaria_id === s.id).length })).sort((a: any, b: any) => b.n - a.n)
   const mx = Math.max(...bySec.map((s: any) => s.n), 1)
@@ -94,21 +82,6 @@ export default function Dashboard({ nome, fotoUrl, oficios, processos, pesquisas
           </div>
         ))}
       </div>
-      {tem('ordens.ver') && (
-        <Card style={{ padding: 18 }}>
-          <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--txt)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Ic n='truck' z={16} c={G} />Ordens de Fornecimento
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: mob ? 'repeat(3,1fr)' : 'repeat(6,1fr)', gap: 10 }}>
-            {cardsOF.map(c => (
-              <div key={c.l} style={{ background: 'var(--inp)', borderRadius: 11, padding: '11px 12px', borderLeft: `3px solid ${c.cor}` }}>
-                <p style={{ fontSize: 22, fontWeight: 900, color: c.cor, lineHeight: 1 }}>{c.v}</p>
-                <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', marginTop: 5 }}>{c.l}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
       {(at.length > 0 || venc.length > 0) && (
         <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr' : '1fr 1fr', gap: 14 }}>
           {at.length > 0 && (

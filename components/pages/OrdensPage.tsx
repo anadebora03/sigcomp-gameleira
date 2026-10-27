@@ -4,6 +4,7 @@ import {Ic,IB,PB,Card,Fld,Sb,SAv,IS,oF,oB,G,GB,GD} from '@/components/ui/atoms'
 import Modal from '@/components/ui/Modal'
 import DropZoneUpload from '@/components/ui/DropZoneUpload'
 import ARow from '@/components/ui/ARow'
+import OrdensResumo from '@/components/OrdensResumo'
 import {SECS} from '@/lib/constants'
 import {gS} from '@/utils/helpers'
 import {fD} from '@/utils/formatters'
@@ -293,6 +294,7 @@ export default function OrdensPage({ordens,processos,saveOrdem,deleteOrdem,toast
 
   return(
     <div style={{display:'flex',flexDirection:'column',gap:14}}>
+      <OrdensResumo ordens={ordens}/>
       <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
         <div style={{flex:1,minWidth:180,position:'relative'}}>
           <div style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)',color:'var(--muted)',pointerEvents:'none'}}><Ic n="search" z={15}/></div>
