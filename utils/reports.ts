@@ -133,28 +133,51 @@ export function downloadCsvReport(type: ReportType, data: any, filters: ReportFi
   return report
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
+}
+
+// Mesma identidade visual do sistema: fonte Inter e verde principal (#1a5c38).
+// print-color-adjust garante que o fundo verde do cabeçalho saia igual na impressão.
 export function openPrintableReport(type: ReportType, data: any, filters: ReportFilterState = {}) {
   const report = buildReport(type, data, filters)
   const html = `<!doctype html>
-<html>
+<html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
-    <title>${report.title}</title>
+    <title>${escapeHtml(report.title)}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;900&display=swap" rel="stylesheet" />
     <style>
-      body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
-      table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-      th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 12px; }
-      th { background: #f3f4f6; }
-      h1 { font-size: 20px; margin-bottom: 8px; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
+      @page { margin: 14mm; }
+      body { font-family: 'Inter', system-ui, sans-serif; margin: 0; padding: 24px; color: #0a1f10; -webkit-font-smoothing: antialiased; }
+      h1 { font-size: 22px; font-weight: 900; color: #1a5c38; margin: 0 0 6px; line-height: 1.2; }
+      .sub { font-size: 12px; font-weight: 300; color: #1a5c38; margin: 0 0 18px; }
+      table { width: 100%; border-collapse: collapse; }
+      thead { display: table-header-group; }
+      tr { page-break-inside: avoid; }
+      th { background: #1a5c38; color: #fff; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; text-align: left; padding: 9px 10px; border: 1px solid #1a5c38; }
+      td { font-size: 12px; padding: 8px 10px; border: 1px solid #d4e8d9; text-align: left; vertical-align: top; }
+      tbody tr:nth-child(even) td { background: #f5f9f6; }
+      @media print { body { padding: 0; } }
     </style>
   </head>
   <body>
-    <h1>${report.title}</h1>
-    <p>Gerado em ${new Date().toLocaleString('pt-BR')}</p>
+    <h1>${escapeHtml(report.title)}</h1>
+    <p class="sub">SIGCOMP — Prefeitura Municipal da Gameleira &nbsp;·&nbsp; Gerado em ${new Date().toLocaleString('pt-BR')}</p>
     <table>
-      <thead><tr>${report.headers.map((header) => `<th>${header}</th>`).join('')}</tr></thead>
-      <tbody>${report.rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+      <thead><tr>${report.headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+      <tbody>${report.rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
     </table>
+    <script>
+      // Só imprime depois que a fonte carregar, para a impressão sair igual à tela
+      window.addEventListener('load', function () {
+        var go = function () { setTimeout(function () { window.focus(); window.print() }, 100) }
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(go); else go()
+      })
+    </script>
   </body>
 </html>`
 
@@ -163,6 +186,5 @@ export function openPrintableReport(type: ReportType, data: any, filters: Report
   win.document.write(html)
   win.document.close()
   win.focus()
-  setTimeout(() => win.print(), 300)
   return report
 }
