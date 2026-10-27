@@ -18,13 +18,20 @@ function useClock() {
   return now
 }
 
-function ClockBar({ saudacao, nomeUsuario, cargo, fotoUrl }: { saudacao: string; nomeUsuario: string; cargo?: string | null; fotoUrl?: string | null }) {
+// Tudo no horário de Brasília (mesmo se o relógio/fuso do computador estiver diferente)
+const TZ = 'America/Sao_Paulo'
+const fmtPartes = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
+
+function ClockBar({ nomeUsuario, cargo, fotoUrl }: { nomeUsuario: string; cargo?: string | null; fotoUrl?: string | null }) {
   const now = useClock()
-  const dias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
-  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-  const dia = dias[now.getDay()]
-  const data = `${now.getDate()} de ${meses[now.getMonth()]} de ${now.getFullYear()}`
-  const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const p = Object.fromEntries(fmtPartes.formatToParts(now).map(x => [x.type, x.value]))
+  const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
+  const dia = cap(p.weekday)
+  const data = `${p.day} de ${cap(p.month)} de ${p.year}`
+  const hora = `${p.hour}:${p.minute}:${p.second}`
+  // Recalculada a cada segundo junto com o relógio, então muda sozinha ao virar o horário
+  const h = Number(p.hour)
+  const saudacao = h >= 5 && h < 12 ? 'Bom dia' : h >= 12 && h < 18 ? 'Boa tarde' : 'Boa noite'
 
   return (
     <div style={{ background: 'linear-gradient(135deg,#0d3d22,#1a5c38)', borderRadius: 14, padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -49,12 +56,6 @@ function ClockBar({ saudacao, nomeUsuario, cargo, fotoUrl }: { saudacao: string;
 export default function Dashboard({ nome, cargo, fotoUrl, oficios, processos, pesquisas }: any) {
   const mob = useMob()
 
-  const now = new Date()
-  const hour = now.getHours()
-  let saudacao = 'Bom dia'
-  if (hour >= 12 && hour < 18) saudacao = 'Boa tarde'
-  else if (hour >= 18 || hour < 6) saudacao = 'Boa noite'
-
   const at = oficios.filter((o: any) => isOv(o.prazo) && !['concluido', 'arquivado'].includes(o.status))
   const venc = oficios.filter((o: any) => isSn(o.prazo) && !['concluido', 'arquivado'].includes(o.status))
   const cards = [
@@ -70,7 +71,7 @@ export default function Dashboard({ nome, cargo, fotoUrl, oficios, processos, pe
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <ClockBar saudacao={saudacao} nomeUsuario={nome || ''} cargo={cargo} fotoUrl={fotoUrl} />
+      <ClockBar nomeUsuario={nome || ''} cargo={cargo} fotoUrl={fotoUrl} />
       <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr 1fr' : 'repeat(6,1fr)', gap: 12 }}>
         {cards.map((c, i) => (
           <div key={i} style={{ background: `linear-gradient(135deg,${c.g})`, borderRadius: 16, padding: 16, color: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,.15)', animation: `fadeUp .4s ease ${i * .06}s both` }}>
