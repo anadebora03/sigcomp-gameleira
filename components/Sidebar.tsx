@@ -1,7 +1,10 @@
 'use client'
+import { useState } from 'react'
 import { Ic } from '@/components/ui/atoms'
 import { usePermissions } from '@/hooks/usePermissions'
 import type { PageId } from './App'
+import type { PerfilCtx } from '@/hooks/usePerfil'
+import ConfigMenu from './ConfigMenu'
 
 const NAV = [
   {id:'dashboard',  l:'Dashboard',         icon:'dashboard', permissao: undefined},  // sempre visível
@@ -21,12 +24,18 @@ interface Props {
   alertCount: number
   setPage: (p: PageId) => void
   setDark: (d: boolean) => void
+  onLogout: () => void
   onCollapse?: () => void
+  onExpand?: () => void
   onClose?: () => void
+  perfil: PerfilCtx
+  userEmail?: string
+  toast: (msg: string, type?: string) => void
 }
 
-export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, onCollapse, onClose, alertCount }: Props) {
+export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, onLogout, onCollapse, onExpand, onClose, alertCount, perfil, userEmail, toast }: Props) {
   const show = !mini || mobile
+  const [logoHover, setLogoHover] = useState(false)
   const { tem, isAdminOrDirector } = usePermissions()
 
   // Filtrar itens do menu baseado em permissões
@@ -46,9 +55,17 @@ export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, on
     <>
       {/* Logo */}
       <div style={{ padding:'13px 11px', borderBottom:'1px solid var(--sbb)', display:'flex', alignItems:'center', gap:10 }}>
-        <div style={{ width:34, height:34, borderRadius:9, background:'linear-gradient(135deg,#1a5c38,#2d8f5e)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          <Ic n="building" z={17} c="#fff"/>
-        </div>
+        {mini && !mobile ? (
+          // Recolhida: o logo vira o botão de expandir (a seta aparece ao passar o mouse)
+          <button onClick={onExpand} title="Expandir menu" onMouseEnter={() => setLogoHover(true)} onMouseLeave={() => setLogoHover(false)}
+            style={{ width:34, height:34, borderRadius:9, border:'none', cursor:'pointer', background:'linear-gradient(135deg,#1a5c38,#2d8f5e)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Ic n={logoHover ? 'chevR' : 'building'} z={17} c="#fff"/>
+          </button>
+        ) : (
+          <div style={{ width:34, height:34, borderRadius:9, background:'linear-gradient(135deg,#1a5c38,#2d8f5e)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Ic n="building" z={17} c="#fff"/>
+          </div>
+        )}
         {show && (
           <div style={{ minWidth:0, flex:1 }}>
             <p style={{ fontSize:12, fontWeight:900, color:'#4ade80', lineHeight:1.1 }}>SIGCOMP</p>
@@ -100,14 +117,14 @@ export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, on
         })}
       </nav>
 
-      {/* Footer */}
-      <div style={{ padding:'9px 7px', borderTop:'1px solid var(--sbb)', display:'flex', flexDirection:'column', gap:2 }}>
-        {/* Dark mode */}
-        <button onClick={() => setDark(!dark)}
-          style={{ display:'flex', alignItems:'center', gap:10, padding:show?'9px 10px':'9px', borderRadius:10, border:'none', background:'transparent', cursor:'pointer', fontFamily:'inherit', fontSize:12, fontWeight:700, color:'var(--sbf)', opacity:.5, width:'100%', justifyContent:show?'flex-start':'center' }}
-          onMouseEnter={e => { (e.currentTarget as any).style.background='rgba(255,255,255,.08)'; (e.currentTarget as any).style.opacity='1' }}
-          onMouseLeave={e => { (e.currentTarget as any).style.background='transparent'; (e.currentTarget as any).style.opacity='.5' }}>
-          <Ic n={dark?'sun':'moon'} z={16}/>{show && (dark?'Modo Claro':'Modo Escuro')}
+      {/* Footer: Configurações (perfil + modo escuro) e Sair */}
+      <div style={{ padding:'9px 7px', borderTop:'1px solid var(--sbb)', display:'flex', flexDirection:show?'row':'column', alignItems:'stretch', gap:4 }}>
+        <ConfigMenu show={show} perfil={perfil} userEmail={userEmail} dark={dark} setDark={setDark} toast={toast}/>
+        <button onClick={onLogout} title="Sair do sistema"
+          style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:9, borderRadius:10, border:'none', background:'transparent', cursor:'pointer', flexShrink:0, opacity:.8 }}
+          onMouseEnter={e => { (e.currentTarget as any).style.background='rgba(220,38,38,.15)'; (e.currentTarget as any).style.opacity='1' }}
+          onMouseLeave={e => { (e.currentTarget as any).style.background='transparent'; (e.currentTarget as any).style.opacity='.8' }}>
+          <Ic n="logout" z={16} c="#fca5a5"/>
         </button>
       </div>
     </>

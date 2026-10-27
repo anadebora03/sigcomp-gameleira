@@ -6,7 +6,7 @@ import { useMob } from '@/hooks/useMob'
 import { useAuth } from '@/hooks/useAuth'
 import { usePerfil } from '@/hooks/usePerfil'
 import Sidebar from './Sidebar'
-import Header from './Header'
+import { Ic } from './ui/atoms'
 import Dashboard from './pages/Dashboard'
 import OficiosPage from './pages/OficiosPage'
 import ProcessosPage from './pages/ProcessosPage'
@@ -98,21 +98,27 @@ export default function App() {
       {/* Mobile sidebar */}
       {mob && mobMenu && (
         <aside style={{ position:'fixed',inset:'0 auto 0 0',width:256,background:'var(--sb)',display:'flex',flexDirection:'column',zIndex:50 }}>
-          <Sidebar mini={false} mobile page={page} setPage={p => { setPage(p); setMobMenu(false) }} dark={dark} setDark={setDark} alertCount={alertCount} onClose={() => setMobMenu(false)}/>
+          <Sidebar mini={false} mobile page={page} setPage={p => { setPage(p); setMobMenu(false) }} dark={dark} setDark={setDark} alertCount={alertCount} onClose={() => setMobMenu(false)} onLogout={handleLogout} perfil={perfil} userEmail={user.email} toast={showToast}/>
         </aside>
       )}
 
       {/* Desktop sidebar */}
       {!mob && (
         <aside style={{ width:sideOpen?228:60, flexShrink:0, transition:'width .25s ease', background:'var(--sb)', borderRight:'1px solid var(--sbb)', display:'flex', flexDirection:'column', overflow:'hidden', zIndex:30 }}>
-          <Sidebar mini={!sideOpen} mobile={false} page={page} setPage={setPage} dark={dark} setDark={setDark} alertCount={alertCount} onCollapse={() => setSideOpen(false)}/>
+          <Sidebar mini={!sideOpen} mobile={false} page={page} setPage={setPage} dark={dark} setDark={setDark} alertCount={alertCount} onCollapse={() => setSideOpen(false)} onExpand={() => setSideOpen(true)} onLogout={handleLogout} perfil={perfil} userEmail={user.email} toast={showToast}/>
         </aside>
       )}
 
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
-        <Header page={page} mob={mob} dark={dark} setDark={setDark} sideOpen={sideOpen} onOpenSide={() => setSideOpen(true)} onOpenMob={() => setMobMenu(true)} onLogout={handleLogout} userEmail={user.email} perfil={perfil} toast={showToast}/>
         <main style={{ flex:1, overflowY:'auto', padding:mob?'12px 11px':'18px 22px', paddingBottom:mob?74:18 }}>
           <div style={{ animation:'fadeUp .3s ease both', maxWidth:1400, margin:'0 auto' }}>
+            {/* Título da aba (sem barra); no Dashboard a saudação já faz esse papel */}
+            {(mob || page !== 'dashboard') && (
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
+                {mob && <button onClick={() => setMobMenu(true)} title="Abrir menu" style={{ padding:6, marginLeft:-6, borderRadius:9, border:'none', background:'transparent', cursor:'pointer', color:'var(--muted)', display:'flex' }}><Ic n="menu" z={20}/></button>}
+                {page !== 'dashboard' && <h1 style={{ fontSize:mob?17:20, fontWeight:900, color:'var(--txt)', lineHeight:1.2 }}>{PAGE_TITLES[page]}</h1>}
+              </div>
+            )}
             {page==='dashboard'   && <Dashboard   nome={perfil.nome} cargo={perfil.perfil?.cargo} fotoUrl={perfil.fotoUrl} oficios={store.oficios} processos={store.processos} pesquisas={store.pesquisas}/>}
             {page==='oficios'     && <OficiosPage  {...pp}/>}
             {page==='processos'   && <ProcessosPage {...pp}/>}
