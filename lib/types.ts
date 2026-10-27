@@ -54,6 +54,17 @@ export interface Pesquisa {
   fornecedores: Fornecedor[]; anexos: Arquivo[]
 }
 
+export interface OrdemFornecimento {
+  id: string; numero_ordem: string; processo_id: string | null
+  fornecedor: string; fornecedor_cnpj: string; secretaria_id: number
+  data_emissao: string | null; data_envio: string; prazo_final_entrega: string
+  data_entrega: string | null
+  status: 'aberta' | 'entregue' | 'cancelada'  // gravado; pendente/próximo/hoje/atrasado são calculados (utils/ordens.ts)
+  observacoes: string; obs_entrega: string
+  arquivo: Arquivo | null; comprovante_entrega: Arquivo | null
+  created_by?: string; created_at?: string; updated_at?: string
+}
+
 export interface Usuario {
   id: string; nome: string; cargo: string; email: string
   perfil: string; ativo: boolean; avatar: string; senha?: string; senha2?: string
@@ -79,6 +90,11 @@ export interface Permissoes {
   'pesquisas.criar': boolean
   'pesquisas.editar': boolean
   'pesquisas.excluir': boolean
+  'ordens.ver': boolean
+  'ordens.criar': boolean
+  'ordens.editar': boolean
+  'ordens.excluir': boolean
+  'ordens.entregar': boolean
   'documentos.ver': boolean
   'documentos.baixar': boolean
   'documentos.excluir': boolean

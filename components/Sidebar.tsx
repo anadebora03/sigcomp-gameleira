@@ -8,6 +8,7 @@ const NAV = [
   {id:'oficios',    l:'Ofícios',            icon:'file', permissao: 'oficios.ver'},
   {id:'processos',  l:'Processos Licit.',   icon:'gavel', permissao: 'processos.ver'},
   {id:'pesquisas',  l:'Pesquisas de Preço', icon:'check_sq', permissao: 'pesquisas.ver'},
+  {id:'ordens',     l:'Ordens de Fornec.',  icon:'truck', permissao: 'ordens.ver'},
   {id:'secretarias',l:'Secretarias',        icon:'building', permissao: 'secretarias.ver'},
   {id:'alertas',    l:'Alertas',            icon:'bell', permissao: undefined, badge:true},
   {id:'relatorios', l:'Relatórios',         icon:'rep', permissao: 'relatorios.ver'},

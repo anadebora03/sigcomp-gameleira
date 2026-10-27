@@ -5,16 +5,18 @@ import { SECS } from '@/lib/constants'
 import { formatCurrency, parseCurrencyInput } from '@/utils/formatters'
 import { buildReport, downloadCsvReport, openPrintableReport } from '@/utils/reports'
 import { usePermissions } from '@/hooks/usePermissions'
+import { SOF } from '@/utils/ordens'
 
 const REPORT_TYPES = [
   { key: 'oficios', nome: 'Ofícios', cor: '#1a5c38', icon: 'building' },
   { key: 'processos', nome: 'Processos Licitatórios', cor: '#c9a227', icon: 'gavel' },
   { key: 'pesquisas', nome: 'Pesquisas de Preço', cor: '#0F1E3A', icon: 'check_sq' },
+  { key: 'ordens', nome: 'Ordens de Fornecimento', cor: '#c9a227', icon: 'truck' },
   { key: 'secretarias', nome: 'Secretarias', cor: '#1a5c38', icon: 'building' },
   { key: 'usuarios', nome: 'Usuários', cor: '#0F1E3A', icon: 'users' },
 ] as const
 
-export default function RelatoriosPage({ oficios, processos, pesquisas, secretarias, usuarios, toast }: any) {
+export default function RelatoriosPage({ oficios, processos, pesquisas, ordens = [], secretarias, usuarios, toast }: any) {
   const { tem } = usePermissions()
   const [filters, setFilters] = useState({ startDate: '', endDate: '', status: '', secretaria: '' })
   const [activeType, setActiveType] = useState<string>('oficios')
@@ -46,15 +48,16 @@ export default function RelatoriosPage({ oficios, processos, pesquisas, secretar
         oficios: (oficios || []).map((item: any) => ({ ...item, secretaria_nome: SECS.find((sec: any) => sec.id === item.secretaria_id)?.nome || '--' })),
         processos: (processos || []).map((item: any) => ({ ...item, secretaria_nome: SECS.find((sec: any) => sec.id === item.secretaria_id)?.nome || '--' })),
         pesquisas: (pesquisas || []).map((item: any) => ({ ...item, secretaria_nome: SECS.find((sec: any) => sec.id === item.secretaria_id)?.nome || '--' })),
+        ordens: (ordens || []).map((item: any) => ({ ...item, secretaria_nome: SECS.find((sec: any) => sec.id === item.secretaria_id)?.nome || '--', processo_numero: (processos || []).find((p: any) => p.id === item.processo_id)?.numero || '--' })),
         secretarias: secretarias || [],
         usuarios: usuarios || [],
       }
       if (mode === 'pdf') {
         openPrintableReport(type as any, payload, filters)
-        toast(`PDF gerado para ${type === 'usuarios' ? 'Usuários' : type === 'secretarias' ? 'Secretarias' : type === 'processos' ? 'Processos Licitatórios' : type === 'pesquisas' ? 'Pesquisas de Preço' : 'Ofícios'}.`, 'success')
+        toast(`PDF gerado para ${type === 'usuarios' ? 'Usuários' : type === 'secretarias' ? 'Secretarias' : type === 'processos' ? 'Processos Licitatórios' : type === 'pesquisas' ? 'Pesquisas de Preço' : type === 'ordens' ? 'Ordens de Fornecimento' : 'Ofícios'}.`, 'success')
       } else {
         downloadCsvReport(type as any, payload, filters)
-        toast(`CSV gerado para ${type === 'usuarios' ? 'Usuários' : type === 'secretarias' ? 'Secretarias' : type === 'processos' ? 'Processos Licitatórios' : type === 'pesquisas' ? 'Pesquisas de Preço' : 'Ofícios'}.`, 'success')
+        toast(`CSV gerado para ${type === 'usuarios' ? 'Usuários' : type === 'secretarias' ? 'Secretarias' : type === 'processos' ? 'Processos Licitatórios' : type === 'pesquisas' ? 'Pesquisas de Preço' : type === 'ordens' ? 'Ordens de Fornecimento' : 'Ofícios'}.`, 'success')
       }
     } catch (error) {
       console.error('[relatorios] erro ao gerar relatório:', error)
@@ -67,11 +70,12 @@ export default function RelatoriosPage({ oficios, processos, pesquisas, secretar
       oficios: (oficios || []).map((item: any) => ({ ...item, secretaria_nome: SECS.find((sec: any) => sec.id === item.secretaria_id)?.nome || '--' })),
       processos: (processos || []).map((item: any) => ({ ...item, secretaria_nome: SECS.find((sec: any) => sec.id === item.secretaria_id)?.nome || '--' })),
       pesquisas: (pesquisas || []).map((item: any) => ({ ...item, secretaria_nome: SECS.find((sec: any) => sec.id === item.secretaria_id)?.nome || '--' })),
+      ordens: (ordens || []).map((item: any) => ({ ...item, secretaria_nome: SECS.find((sec: any) => sec.id === item.secretaria_id)?.nome || '--', processo_numero: (processos || []).find((p: any) => p.id === item.processo_id)?.numero || '--' })),
       secretarias: secretarias || [],
       usuarios: usuarios || [],
     }
     return buildReport(activeType as any, payload, filters)
-  }, [activeType, filters, oficios, processos, pesquisas, secretarias, usuarios])
+  }, [activeType, filters, oficios, processos, pesquisas, ordens, secretarias, usuarios])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -98,12 +102,14 @@ export default function RelatoriosPage({ oficios, processos, pesquisas, secretar
             <label style={{ fontSize: 10, fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Status</label>
             <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} style={{ border: '1px solid var(--brd)', borderRadius: 8, padding: '8px 10px', background: 'var(--inp)', color: 'var(--txt)' }}>
               <option value="">Todos</option>
+              {activeType === 'ordens' ? SOF.map((s) => <option key={s.v} value={s.v}>{s.l}</option>) : <>
               <option value="pendente">Pendente</option>
               <option value="concluido">Concluído</option>
               <option value="solicitado">Solicitado</option>
               <option value="aguardando">Aguardando</option>
               <option value="andamento">Andamento</option>
               <option value="concluida">Concluída</option>
+              </>}
             </select>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

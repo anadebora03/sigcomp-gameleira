@@ -3,8 +3,43 @@ import {Ic,Card,Pb} from '@/components/ui/atoms'
 import {STO} from '@/lib/constants'
 import {gS,gT} from '@/utils/helpers'
 import {fD} from '@/utils/formatters'
+import {alertasOF,statusOF,mensagemAlertaOF,hojeLocal} from '@/utils/ordens'
 
-export default function AlertasPage({oficios}:any){
+const COR_OF:Record<string,{cor:string;dot:string}>={atrasado:{cor:'#dc2626',dot:'🔴'},hoje:{cor:'#ea580c',dot:'🟠'},proximo:{cor:'#d97706',dot:'🟡'}}
+
+function AlertasOrdens({ordens,processos}:any){
+  const hoje=hojeLocal()
+  const items=alertasOF(ordens||[],hoje)
+  const procNum=(id:string)=>(processos||[]).find((p:any)=>p.id===id)?.numero
+  return(
+    <Card style={{overflow:'hidden'}}>
+      <div style={{padding:'12px 16px',borderBottom:'1px solid var(--brd)',display:'flex',alignItems:'center',gap:10,background:'#fef2f2'}}>
+        <Ic n="truck" z={16} c="#dc2626"/>
+        <span style={{fontSize:13,fontWeight:800,color:'#dc2626'}}>Ordens de Fornecimento</span>
+        <span style={{marginLeft:'auto',fontSize:10,fontWeight:800,color:'#dc2626',background:'white',padding:'2px 8px',borderRadius:999}}>{items.length}</span>
+      </div>
+      {items.length===0
+        ?<p style={{padding:16,fontSize:12,color:'var(--muted)',textAlign:'center'}}>Nenhuma ordem atrasada ou perto do prazo</p>
+        :items.map((o:any)=>{
+          const s=gS(o.secretaria_id)
+          const c=COR_OF[statusOF(o,hoje)]
+          const pn=o.processo_id?procNum(o.processo_id):null
+          return(
+            <div key={o.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 16px',borderBottom:'1px solid var(--brd)',flexWrap:'wrap'}}>
+              <span style={{fontSize:14,flexShrink:0}}>{c.dot}</span>
+              <div style={{flex:1,minWidth:160}}>
+                <p style={{fontSize:12,fontWeight:800,color:c.cor}}>{mensagemAlertaOF(o,hoje)}</p>
+                <p style={{fontSize:10,color:'var(--muted)'}}>{o.fornecedor} · {s.sigla}{pn?` · ${pn}`:''} · Prazo {fD(o.prazo_final_entrega)}</p>
+              </div>
+            </div>
+          )
+        })
+      }
+    </Card>
+  )
+}
+
+export default function AlertasPage({oficios,ordens,processos}:any){
   const secs=[
     {title:'Atrasados',items:oficios.filter((o:any)=>{const p=o.prazo;return p&&new Date(p)<new Date()&&!['concluido','arquivado'].includes(o.status)}),cor:'#dc2626',bg:'#fef2f2',icon:'alert'},
     {title:'Vencendo em 5 dias',items:oficios.filter((o:any)=>{if(!o.prazo)return false;const d=(new Date(o.prazo).getTime()-new Date().getTime())/86400000;return d>=0&&d<=5&&!['concluido','arquivado'].includes(o.status)}),cor:'#d97706',bg:'#fffbeb',icon:'clock'},
@@ -13,6 +48,7 @@ export default function AlertasPage({oficios}:any){
   ]
   return(
     <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <AlertasOrdens ordens={ordens} processos={processos}/>
       {secs.map(sec=>(
         <Card key={sec.title} style={{overflow:'hidden'}}>
           <div style={{padding:'12px 16px',borderBottom:'1px solid var(--brd)',display:'flex',alignItems:'center',gap:10,background:sec.bg}}>

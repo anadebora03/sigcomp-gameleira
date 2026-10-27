@@ -97,6 +97,16 @@ export const MODULOS_PERMISSOES = {
       { chave: 'pesquisas.excluir', label: 'Excluir pesquisa' },
     ]
   },
+  ordens: {
+    label: 'ORDENS DE FORNECIMENTO',
+    permissoes: [
+      { chave: 'ordens.ver', label: 'Ver ordens' },
+      { chave: 'ordens.criar', label: 'Criar ordem' },
+      { chave: 'ordens.editar', label: 'Editar ordem' },
+      { chave: 'ordens.excluir', label: 'Excluir ordem' },
+      { chave: 'ordens.entregar', label: 'Marcar como entregue' },
+    ]
+  },
   documentos: {
     label: 'DOCUMENTOS',
     permissoes: [
@@ -150,6 +160,7 @@ export const PERFIS_PERMISSOES: Record<string, Record<string, boolean>> = {
     'processos.ver': true, 'processos.criar': true, 'processos.editar': true,
     'processos.cancelar': true, 'processos.concluir': true, 'processos.anexar': true,
     'pesquisas.ver': true, 'pesquisas.criar': true, 'pesquisas.editar': true, 'pesquisas.excluir': true,
+    'ordens.ver': true, 'ordens.criar': true, 'ordens.editar': true, 'ordens.excluir': true, 'ordens.entregar': true,
     'documentos.ver': true, 'documentos.baixar': true, 'documentos.excluir': true,
     'secretarias.ver': true, 'secretarias.criar': true, 'secretarias.editar': true, 'secretarias.excluir': true,
     'relatorios.ver': true, 'relatorios.pdf': true, 'relatorios.excel': true,
@@ -162,6 +173,7 @@ export const PERFIS_PERMISSOES: Record<string, Record<string, boolean>> = {
     'processos.ver': true, 'processos.criar': true, 'processos.editar': true,
     'processos.cancelar': true, 'processos.concluir': true, 'processos.anexar': true,
     'pesquisas.ver': true, 'pesquisas.criar': true, 'pesquisas.editar': true, 'pesquisas.excluir': true,
+    'ordens.ver': true, 'ordens.criar': true, 'ordens.editar': true, 'ordens.excluir': true, 'ordens.entregar': true,
     'documentos.ver': true, 'documentos.baixar': true, 'documentos.excluir': true,
     'secretarias.ver': true, 'secretarias.criar': true, 'secretarias.editar': true, 'secretarias.excluir': true,
     'relatorios.ver': true, 'relatorios.pdf': true, 'relatorios.excel': true,
@@ -174,6 +186,7 @@ export const PERFIS_PERMISSOES: Record<string, Record<string, boolean>> = {
     'processos.ver': true, 'processos.criar': true, 'processos.editar': true,
     'processos.cancelar': false, 'processos.concluir': false, 'processos.anexar': true,
     'pesquisas.ver': true, 'pesquisas.criar': true, 'pesquisas.editar': true, 'pesquisas.excluir': false,
+    'ordens.ver': true, 'ordens.criar': true, 'ordens.editar': true, 'ordens.excluir': false, 'ordens.entregar': true,
     'documentos.ver': true, 'documentos.baixar': true, 'documentos.excluir': false,
     'secretarias.ver': true, 'secretarias.criar': false, 'secretarias.editar': false, 'secretarias.excluir': false,
     'relatorios.ver': true, 'relatorios.pdf': true, 'relatorios.excel': true,
@@ -186,6 +199,7 @@ export const PERFIS_PERMISSOES: Record<string, Record<string, boolean>> = {
     'processos.ver': true, 'processos.criar': false, 'processos.editar': false,
     'processos.cancelar': false, 'processos.concluir': false, 'processos.anexar': false,
     'pesquisas.ver': true, 'pesquisas.criar': false, 'pesquisas.editar': false, 'pesquisas.excluir': false,
+    'ordens.ver': true, 'ordens.criar': false, 'ordens.editar': false, 'ordens.excluir': false, 'ordens.entregar': false,
     'documentos.ver': true, 'documentos.baixar': true, 'documentos.excluir': false,
     'secretarias.ver': true, 'secretarias.criar': false, 'secretarias.editar': false, 'secretarias.excluir': false,
     'relatorios.ver': true, 'relatorios.pdf': false, 'relatorios.excel': false,
@@ -198,6 +212,7 @@ export const PERFIS_PERMISSOES: Record<string, Record<string, boolean>> = {
     'processos.ver': true, 'processos.criar': false, 'processos.editar': false,
     'processos.cancelar': false, 'processos.concluir': false, 'processos.anexar': false,
     'pesquisas.ver': true, 'pesquisas.criar': false, 'pesquisas.editar': false, 'pesquisas.excluir': false,
+    'ordens.ver': true, 'ordens.criar': false, 'ordens.editar': false, 'ordens.excluir': false, 'ordens.entregar': false,
     'documentos.ver': true, 'documentos.baixar': true, 'documentos.excluir': false,
     'secretarias.ver': true, 'secretarias.criar': false, 'secretarias.editar': false, 'secretarias.excluir': false,
     'relatorios.ver': true, 'relatorios.pdf': false, 'relatorios.excel': false,

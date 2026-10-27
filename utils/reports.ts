@@ -1,4 +1,4 @@
-export type ReportType = 'oficios' | 'processos' | 'pesquisas' | 'secretarias' | 'usuarios'
+export type ReportType = 'oficios' | 'processos' | 'pesquisas' | 'ordens' | 'secretarias' | 'usuarios'
 
 export interface ReportFilterState {
   startDate?: string
@@ -13,7 +13,8 @@ interface ReportDefinition {
   rows: string[][]
 }
 
-import { formatCurrency, parseCurrencyInput } from '@/utils/formatters'
+import { formatCurrency, parseCurrencyInput, fD } from '@/utils/formatters'
+import { statusOF, labelStatusOF } from '@/utils/ordens'
 
 function escapeCsv(value: unknown) {
   const text = String(value ?? '')
@@ -71,6 +72,22 @@ export function buildReport(type: ReportType, data: any, filters: ReportFilterSt
       title: 'Relatório de Pesquisas de Preço',
       headers: ['Número', 'Secretaria', 'Objeto', 'Status', 'Período', 'Responsável', 'Fornecedores'],
       rows: rows.map((item: any) => [item.numero || '--', item.secretaria_nome || '--', item.objeto || '--', item.status || '--', item.periodo || '--', item.responsavel || '--', String(item.fornecedores?.length || 0)]),
+    } as ReportDefinition
+  }
+
+  if (type === 'ordens') {
+    // Período pela data de envio; status é o calculado (pendente, atrasado...)
+    const rows = (data.ordens || []).filter((item: any) => {
+      const matchesDate = (!filters.startDate || item.data_envio >= filters.startDate) && (!filters.endDate || item.data_envio <= filters.endDate)
+      const matchesStatus = !filters.status || statusOF(item) === filters.status
+      const matchesSecretaria = !filters.secretaria || String(item.secretaria_id) === String(filters.secretaria)
+      return matchesDate && matchesStatus && matchesSecretaria
+    })
+
+    return {
+      title: 'Relatório de Ordens de Fornecimento',
+      headers: ['Número', 'Processo', 'Fornecedor', 'Secretaria', 'Envio', 'Prazo', 'Status', 'Entrega'],
+      rows: rows.map((item: any) => [item.numero_ordem || '--', item.processo_numero || '--', item.fornecedor || '--', item.secretaria_nome || '--', fD(item.data_envio), fD(item.prazo_final_entrega), labelStatusOF(statusOF(item)), fD(item.data_entrega || '')]),
     } as ReportDefinition
   }
 

@@ -71,6 +71,8 @@ export function usePermissions() {
     if (perfil === 'diretor_compras' || perfil === 'diretor_setor_compras') return true
     
     // Outros: verificar permissão específica
+    // Chave ausente nas permissões salvas (ex.: módulo criado depois) → usa o padrão do perfil
+    if (permissoes[chave] === undefined) return (PERFIS_PERMISSOES as any)[perfil]?.[chave] === true
     return permissoes[chave] === true
   }
 

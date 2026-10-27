@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth'
 import type { Arquivo } from '@/lib/types'
 
 interface UploadOpts {
-  modulo: 'oficios' | 'processos' | 'pesquisas' | 'contratos'
+  modulo: 'oficios' | 'processos' | 'pesquisas' | 'contratos' | 'ordens_fornecimento'
   vinculo: string       // numero do oficio/processo (ex: OFF-2025-0001)
   secretaria_id: number
   onSuccess?: (arquivos: Arquivo[]) => void

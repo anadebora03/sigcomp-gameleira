@@ -1,8 +1,8 @@
 'use client'
 import { useState, useCallback, useEffect } from 'react'
 import { SECS } from '@/lib/constants'
-import type { Oficio, Processo, Pesquisa, Usuario, Log, Secretaria } from '@/lib/types'
-import { createLog, listLogs, listOficios, saveOficio as persistOficio, deleteOficio as removeOficio, listProcessos, saveProcesso as persistProcesso, deleteProcesso as removeProcesso, listPesquisas, savePesquisa as persistPesquisa, deletePesquisa as removePesquisa, listSecretarias } from '@/services/data'
+import type { Oficio, Processo, Pesquisa, Usuario, Log, Secretaria, OrdemFornecimento } from '@/lib/types'
+import { createLog, listLogs, listOficios, saveOficio as persistOficio, deleteOficio as removeOficio, listProcessos, saveProcesso as persistProcesso, deleteProcesso as removeProcesso, listPesquisas, savePesquisa as persistPesquisa, deletePesquisa as removePesquisa, listSecretarias, listOrdens, saveOrdem as persistOrdem, deleteOrdem as removeOrdem } from '@/services/data'
 import { listUsers } from '@/services/auth'
 
 export function useStore() {
@@ -12,6 +12,7 @@ export function useStore() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [logs, setLogs] = useState<Log[]>([])
   const [secretarias, setSecretarias] = useState<Secretaria[]>([])
+  const [ordens, setOrdens] = useState<OrdemFornecimento[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -19,14 +20,24 @@ export function useStore() {
       console.log('[store] iniciando carregamento de dados...')
       setError(null)
 
-      const [oficiosRes, processosRes, pesquisasRes, logsRes, secretariasRes, usersRes] = await Promise.all([
+      const [oficiosRes, processosRes, pesquisasRes, logsRes, secretariasRes, usersRes, ordensRes] = await Promise.all([
         listOficios(),
         listProcessos(),
         listPesquisas(),
         listLogs(),
         listSecretarias(),
         listUsers(100),
+        listOrdens(),
       ])
+
+      // Ordens de fornecimento
+      if (ordensRes.success && ordensRes.data) {
+        console.log('[store] ordens de fornecimento carregadas:', ordensRes.data.length)
+        setOrdens(ordensRes.data)
+      } else {
+        console.error('[store] erro ao carregar ordens de fornecimento:', ordensRes.error)
+        setError(ordensRes.error || 'Erro ao carregar ordens de fornecimento')
+      }
 
       // Ofícios
       if (oficiosRes.success && oficiosRes.data) {
@@ -219,7 +230,50 @@ export function useStore() {
     return result
   }, [])
 
+  const saveOrdem = useCallback(async (data: OrdemFornecimento, isNew: boolean, acao?: string) => {
+    console.log('[store] salvando ordem de fornecimento:', data.numero_ordem)
+    setError(null)
+    const result = await persistOrdem(data, isNew)
+    if (!result.success) {
+      console.error('[store] erro ao salvar ordem de fornecimento:', result.error)
+      setError(result.error || 'Erro ao salvar ordem de fornecimento')
+      return result
+    }
+
+    console.log('[store] ordem de fornecimento salva com sucesso')
+    setOrdens(prev => isNew ? [result.data!, ...prev] : prev.map(o => o.id === result.data!.id ? result.data! : o))
+
+    const log = await createLog({ usuario: 'Você', modulo: 'Ordens de Fornecimento', tipo: isNew ? 'create' : 'update', descricao: `${acao || (isNew ? 'Criou' : 'Atualizou')} OF ${result.data!.numero_ordem}`, data: new Date().toISOString() })
+    if (log.success && log.data) setLogs(prev => [log.data!, ...prev])
+
+    return result
+  }, [])
+
+  const deleteOrdem = useCallback(async (id: string) => {
+    console.log('[store] deletando ordem de fornecimento:', id)
+    setError(null)
+    const ordem = ordens.find(o => o.id === id)
+    const result = await removeOrdem(id)
+    if (!result.success) {
+      console.error('[store] erro ao deletar ordem de fornecimento:', result.error)
+      setError(result.error || 'Erro ao excluir ordem de fornecimento')
+      return result
+    }
+
+    console.log('[store] ordem de fornecimento deletada com sucesso')
+    setOrdens(prev => prev.filter(o => o.id !== id))
+    if (ordem) {
+      const log = await createLog({ usuario: 'Você', modulo: 'Ordens de Fornecimento', tipo: 'delete', descricao: `Excluiu OF ${ordem.numero_ordem}`, data: new Date().toISOString() })
+      if (log.success && log.data) setLogs(prev => [log.data!, ...prev])
+    }
+
+    return result
+  }, [ordens])
+
   return {
+    ordens,
+    saveOrdem,
+    deleteOrdem,
     oficios,
     setOficios,
     processos,

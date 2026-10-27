@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import type { Oficio, Processo, Pesquisa, Log, Secretaria } from '@/lib/types'
+import type { Oficio, Processo, Pesquisa, Log, Secretaria, OrdemFornecimento } from '@/lib/types'
 
 function client() {
   return createClient()
@@ -256,6 +256,80 @@ export async function deletePesquisa(id: string): Promise<{ success: boolean; er
     return { success: true }
   } catch (err) {
     console.error('[data] erro ao deletar pesquisa de preço:', err)
+    return { success: false, error: String(err) }
+  }
+}
+
+export async function listOrdens(): Promise<{ success: boolean; data?: OrdemFornecimento[]; error?: string }> {
+  try {
+    console.log('[data] carregando ordens de fornecimento do Supabase')
+    const supabase = client()
+    const { data, error } = await supabase.from('ordens_fornecimento').select('*').order('prazo_final_entrega', { ascending: true })
+    if (error) {
+      console.error('[data] erro ao carregar ordens de fornecimento:', error.message)
+      return { success: false, error: error.message }
+    }
+    console.log('[data] ordens de fornecimento carregadas com sucesso:', data?.length || 0)
+    return { success: true, data: data || [] }
+  } catch (err) {
+    console.error('[data] erro ao carregar ordens de fornecimento:', err)
+    return { success: false, error: String(err) }
+  }
+}
+
+/** Converte erros do Postgres em mensagens amigáveis */
+function erroOrdem(message?: string) {
+  if (!message) return 'Erro ao salvar ordem de fornecimento'
+  if (message.includes('ordens_fornecimento_numero_ordem_key')) return 'Já existe uma ordem com esse número.'
+  if (message.includes('ordens_prazo_apos_envio')) return 'O prazo final não pode ser anterior à data de envio.'
+  if (message.includes('ordens_entregue_tem_data')) return 'Informe a data da entrega.'
+  if (message.includes('row-level security')) return 'Sem permissão para salvar no banco (RLS).'
+  return message
+}
+
+export async function saveOrdem(ordem: OrdemFornecimento, isNew: boolean): Promise<{ success: boolean; data?: OrdemFornecimento; error?: string }> {
+  try {
+    console.log('[data] salvando ordem de fornecimento no Supabase:', ordem.numero_ordem, '(isNew=' + isNew + ')')
+    const supabase = client()
+    const { id, created_by, created_at, updated_at, ...payload } = ordem as any
+    // Datas opcionais vazias precisam ir como null para colunas DATE
+    payload.data_emissao = payload.data_emissao || null
+    payload.data_entrega = payload.data_entrega || null
+    payload.processo_id = payload.processo_id || null
+
+    const query = isNew
+      ? supabase.from('ordens_fornecimento').insert(payload)
+      : supabase.from('ordens_fornecimento').update(payload).eq('id', id)
+    const { data, error } = await query.select('*').single()
+
+    if (error || !data) {
+      console.error('[data] erro ao salvar ordem de fornecimento:', error?.message || 'dados nulos')
+      return { success: false, error: erroOrdem(error?.message) }
+    }
+
+    console.log('[data] ordem de fornecimento salva com sucesso:', data.numero_ordem)
+    return { success: true, data }
+  } catch (err) {
+    console.error('[data] erro ao salvar ordem de fornecimento:', err)
+    return { success: false, error: String(err) }
+  }
+}
+
+export async function deleteOrdem(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('[data] deletando ordem de fornecimento:', id)
+    const supabase = client()
+    // .select() devolve as linhas apagadas: sem isso, um DELETE barrado pelo RLS "passa" sem apagar nada
+    const { data, error } = await supabase.from('ordens_fornecimento').delete().eq('id', id).select('id')
+    if (error) {
+      console.error('[data] erro ao deletar ordem de fornecimento:', error.message)
+      return { success: false, error: error.message }
+    }
+    if (!data?.length) return { success: false, error: 'A ordem não foi excluída (sem permissão ou já removida).' }
+    console.log('[data] ordem de fornecimento deletada com sucesso:', id)
+    return { success: true }
+  } catch (err) {
+    console.error('[data] erro ao deletar ordem de fornecimento:', err)
     return { success: false, error: String(err) }
   }
 }

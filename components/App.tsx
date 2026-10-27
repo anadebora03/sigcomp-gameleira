@@ -10,17 +10,20 @@ import Dashboard from './pages/Dashboard'
 import OficiosPage from './pages/OficiosPage'
 import ProcessosPage from './pages/ProcessosPage'
 import PesquisasPage from './pages/PesquisasPage'
+import OrdensPage from './pages/OrdensPage'
 import SecretariasPage from './pages/SecretariasPage'
 import AlertasPage from './pages/AlertasPage'
 import RelatoriosPage from './pages/RelatoriosPage'
 import UsuariosPage from './pages/UsuariosPage'
 import LogsPage from './pages/LogsPage'
 import Toast from './ui/Toast'
+import { alertasOF } from '@/utils/ordens'
 
-export type PageId = 'dashboard'|'oficios'|'processos'|'pesquisas'|'secretarias'|'alertas'|'relatorios'|'usuarios'|'logs'
+export type PageId = 'dashboard'|'oficios'|'processos'|'pesquisas'|'ordens'|'secretarias'|'alertas'|'relatorios'|'usuarios'|'logs'
 export const PAGE_TITLES: Record<PageId,string> = {
   dashboard:'Dashboard', oficios:'Controle de Ofícios',
   processos:'Processos Licitatórios', pesquisas:'Pesquisas de Preço',
+  ordens:'Controle de Ordem de Fornecimento',
   secretarias:'Secretarias', alertas:'Alertas',
   relatorios:'Relatórios', usuarios:'Usuários', logs:'Logs do Sistema',
 }
@@ -76,7 +79,7 @@ export default function App() {
 
   const alertCount = store.oficios.filter(o =>
     (o.prazo && new Date(o.prazo) < new Date()) || o.status === 'pendente'
-  ).length
+  ).length + alertasOF(store.ordens).length
 
   const pp = { ...store, toast: showToast }
 
@@ -108,13 +111,14 @@ export default function App() {
         <Header page={page} mob={mob} dark={dark} setDark={setDark} sideOpen={sideOpen} onOpenSide={() => setSideOpen(true)} onOpenMob={() => setMobMenu(true)} onLogout={handleLogout} userEmail={user.email}/>
         <main style={{ flex:1, overflowY:'auto', padding:mob?'12px 11px':'18px 22px', paddingBottom:mob?74:18 }}>
           <div style={{ animation:'fadeUp .3s ease both', maxWidth:1400, margin:'0 auto' }}>
-            {page==='dashboard'   && <Dashboard   user={user} oficios={store.oficios} processos={store.processos} pesquisas={store.pesquisas}/>}
+            {page==='dashboard'   && <Dashboard   user={user} oficios={store.oficios} processos={store.processos} pesquisas={store.pesquisas} ordens={store.ordens}/>}
             {page==='oficios'     && <OficiosPage  {...pp}/>}
             {page==='processos'   && <ProcessosPage {...pp}/>}
             {page==='pesquisas'   && <PesquisasPage {...pp}/>}
+            {page==='ordens'      && <OrdensPage    {...pp}/>}
             {page==='secretarias' && <SecretariasPage oficios={store.oficios} processos={store.processos} secretarias={store.secretarias}/>}
-            {page==='alertas'     && <AlertasPage  oficios={store.oficios}/>}
-            {page==='relatorios'  && <RelatoriosPage oficios={store.oficios} processos={store.processos} pesquisas={store.pesquisas} secretarias={store.secretarias} usuarios={store.usuarios} toast={showToast}/>}
+            {page==='alertas'     && <AlertasPage  oficios={store.oficios} ordens={store.ordens} processos={store.processos}/>}
+            {page==='relatorios'  && <RelatoriosPage oficios={store.oficios} processos={store.processos} pesquisas={store.pesquisas} ordens={store.ordens} secretarias={store.secretarias} usuarios={store.usuarios} toast={showToast}/>}
             {page==='usuarios'    && <UsuariosPage  {...pp}/>}
             {page==='logs'        && <LogsPage      logs={store.logs}/>}
           </div>
