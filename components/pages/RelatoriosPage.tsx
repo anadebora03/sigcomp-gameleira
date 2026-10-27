@@ -5,21 +5,23 @@ import { SECS } from '@/lib/constants'
 import { formatCurrency, parseCurrencyInput } from '@/utils/formatters'
 import { buildReport, downloadCsvReport, openPrintableReport } from '@/utils/reports'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useMob } from '@/hooks/useMob'
 import { SOF } from '@/utils/ordens'
 
 // mesmo padrão dos filtros das outras abas (ex.: Ordens de Fornecimento)
 const fil: React.CSSProperties = { ...IS, fontSize: 12, padding: '9px 10px' }
 
 const REPORT_TYPES = [
-  { key: 'oficios', nome: 'Ofícios', cor: '#1a5c38', icon: 'building' },
-  { key: 'processos', nome: 'Processos Licitatórios', cor: '#c9a227', icon: 'gavel' },
-  { key: 'pesquisas', nome: 'Pesquisas de Preço', cor: '#0F1E3A', icon: 'check_sq' },
-  { key: 'ordens', nome: 'Ordens de Fornecimento', cor: '#c9a227', icon: 'truck' },
-  { key: 'secretarias', nome: 'Secretarias', cor: '#1a5c38', icon: 'building' },
+  { key: 'oficios', nome: 'Ofícios', cor: '#1a5c38', icon: 'file', desc: 'Assunto, secretaria, status, data, prazo e responsável.' },
+  { key: 'processos', nome: 'Processos Licitatórios', cor: '#c9a227', icon: 'gavel', desc: 'Modalidade, status e valores estimado e final.' },
+  { key: 'pesquisas', nome: 'Pesquisas de Preço', cor: '#0F1E3A', icon: 'check_sq', desc: 'Objeto, período, responsável e fornecedores.' },
+  { key: 'ordens', nome: 'Ordens de Fornecimento', cor: '#c9a227', icon: 'truck', desc: 'Fornecedor, processo, envio, prazo e entrega.' },
+  { key: 'secretarias', nome: 'Secretarias', cor: '#1a5c38', icon: 'building', desc: 'Lista das secretarias com nome e sigla.' },
 ] as const
 
 export default function RelatoriosPage({ oficios, processos, pesquisas, ordens = [], secretarias, usuarios, toast }: any) {
   const { tem } = usePermissions()
+  const mob = useMob()
   const [filters, setFilters] = useState({ startDate: '', endDate: '', status: '', secretaria: '' })
   const [activeType, setActiveType] = useState<string>('oficios')
 
@@ -81,10 +83,11 @@ export default function RelatoriosPage({ oficios, processos, pesquisas, ordens =
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: 11 }}>
+      {/* 5 contadores + Valor Total com o dobro da largura, ocupando a linha toda */}
+      <div style={{ display: 'grid', gridTemplateColumns: mob ? 'repeat(2,1fr)' : 'repeat(5,1fr) 2fr', gap: 11 }}>
         {sum.map((c, i) => (
-          <Card key={i} style={{ padding: '14px 16px', textAlign: 'center' }}>
-            <p style={{ fontSize: c.str ? 12 : 24, fontWeight: 900, color: c.cor, lineHeight: 1 }}>{c.v}</p>
+          <Card key={i} style={{ padding: '14px 16px', textAlign: 'center', gridColumn: c.str && mob ? 'span 2' : undefined }}>
+            <p style={{ fontSize: 24, fontWeight: 900, color: c.cor, lineHeight: 1, whiteSpace: 'nowrap' }}>{c.v}</p>
             <p style={{ fontSize: 9, color: 'var(--muted)', fontWeight: 600, marginTop: 4 }}>{c.l}</p>
           </Card>
         ))}
@@ -124,17 +127,20 @@ export default function RelatoriosPage({ oficios, processos, pesquisas, ordens =
         </div>
 
         <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--txt)', marginBottom: 16 }}>Gerar Relatórios</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 11 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 11 }}>
           {REPORT_TYPES.map((r) => (
-            <div key={r.key} style={{ border: `1.5px solid ${r.cor}22`, borderRadius: 13, padding: 14, background: activeType === r.key ? `${r.cor}0f` : 'var(--inp)', cursor: 'pointer', transition: 'all .2s' }} onClick={() => setActiveType(r.key)}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 9 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: r.cor + '16', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Ic n={r.icon} z={16} c={r.cor} /></div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <button onClick={(e) => { e.stopPropagation(); handleExport(r.key, 'pdf') }} style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: r.cor + '16', color: r.cor, cursor: 'pointer', fontFamily: 'inherit', fontSize: 9, fontWeight: 800 }} disabled={!canExportPdf}>PDF</button>
-                  <button onClick={(e) => { e.stopPropagation(); handleExport(r.key, 'csv') }} style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: '#05996916', color: '#059669', cursor: 'pointer', fontFamily: 'inherit', fontSize: 9, fontWeight: 800 }} disabled={!canExportXls}>CSV</button>
+            <div key={r.key} style={{ border: `1.5px solid ${activeType === r.key ? r.cor + '55' : r.cor + '22'}`, borderRadius: 13, padding: 14, background: activeType === r.key ? `${r.cor}0f` : 'var(--inp)', cursor: 'pointer', transition: 'all .2s', display: 'flex', flexDirection: 'column', gap: 12 }} onClick={() => setActiveType(r.key)}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 9, background: r.cor + '16', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Ic n={r.icon} z={17} c={r.cor} /></div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--txt)', lineHeight: 1.3 }}>{r.nome}</p>
+                  <p style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)', lineHeight: 1.4, marginTop: 3 }}>{r.desc}</p>
                 </div>
               </div>
-              <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--txt)' }}>{r.nome}</p>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={(e) => { e.stopPropagation(); handleExport(r.key, 'pdf') }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 10px', borderRadius: 8, border: 'none', background: G, color: '#fff', cursor: canExportPdf ? 'pointer' : 'not-allowed', opacity: canExportPdf ? 1 : .5, fontFamily: 'inherit', fontSize: 11, fontWeight: 800 }} disabled={!canExportPdf}><Ic n="dl" z={13} c="#fff" />PDF</button>
+                <button onClick={(e) => { e.stopPropagation(); handleExport(r.key, 'csv') }} style={{ padding: '7px 12px', borderRadius: 8, border: `1.5px solid ${G}33`, background: 'transparent', color: G, cursor: canExportXls ? 'pointer' : 'not-allowed', opacity: canExportXls ? 1 : .5, fontFamily: 'inherit', fontSize: 11, fontWeight: 800 }} disabled={!canExportXls}>CSV</button>
+              </div>
             </div>
           ))}
         </div>
