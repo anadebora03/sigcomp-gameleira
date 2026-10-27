@@ -38,8 +38,9 @@ export default function App() {
   const [mobMenu, setMobMenu] = useState(false)
   const [toast, setToast] = useState<{msg:string;type:string}|null>(null)
   const mob = useMob()
-  const store = useStore()
   const perfil = usePerfil(user?.id)
+  // Nos logs: nome do perfil; sem nome cadastrado, o e-mail completo (identifica a pessoa sem inventar nome)
+  const store = useStore(perfil.nome || user?.email)
 
   useEffect(() => { if (mob) setSideOpen(false); else setSideOpen(true) }, [mob])
 

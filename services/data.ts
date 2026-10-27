@@ -334,11 +334,14 @@ export async function deleteOrdem(id: string): Promise<{ success: boolean; error
   }
 }
 
+export const LIMITE_LOGS = 200
+
 export async function listLogs(): Promise<{ success: boolean; data?: Log[]; error?: string }> {
   try {
     console.log('[data] carregando logs do Supabase')
     const supabase = client()
-    const { data, error } = await supabase.from('logs').select('*').order('id', { ascending: false })
+    // Só os mais recentes: o histórico completo continua no banco, mas não é baixado a cada login
+    const { data, error } = await supabase.from('logs').select('*').order('id', { ascending: false }).limit(LIMITE_LOGS)
     if (error) {
       console.error('[data] erro ao carregar logs:', error.message)
       return { success: false, error: error.message }
