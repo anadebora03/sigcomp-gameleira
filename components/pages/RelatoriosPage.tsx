@@ -16,7 +16,6 @@ const REPORT_TYPES = [
   { key: 'pesquisas', nome: 'Pesquisas de Preço', cor: '#0F1E3A', icon: 'check_sq' },
   { key: 'ordens', nome: 'Ordens de Fornecimento', cor: '#c9a227', icon: 'truck' },
   { key: 'secretarias', nome: 'Secretarias', cor: '#1a5c38', icon: 'building' },
-  { key: 'usuarios', nome: 'Usuários', cor: '#0F1E3A', icon: 'users' },
 ] as const
 
 export default function RelatoriosPage({ oficios, processos, pesquisas, ordens = [], secretarias, usuarios, toast }: any) {
