@@ -6,10 +6,7 @@
  */
 import { useAuth } from '@/hooks/useAuth'
 import { PERFIS_PERMISSOES } from '@/lib/constants'
-
-// Emails com acesso automático de admin/diretor
-const ADMIN_EMAILS = ['deboramelo391997@gmail.com']
-const DIRECTOR_EMAILS = ['setordecompras@gameleira.pe.gov.br']
+import { ADMIN_EMAILS, DIRECTOR_EMAILS } from '@/lib/permissoes'
 
 export function usePermissions() {
   const { user } = useAuth()

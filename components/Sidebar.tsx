@@ -18,7 +18,7 @@ const NAV = [
 
 interface Props {
   mini: boolean; mobile: boolean; page: PageId; dark: boolean
-  alertCount: number; userEmail?: string
+  alertCount: number; userEmail?: string; userName?: string
   setPage: (p: PageId) => void
   setDark: (d: boolean) => void
   onLogout: () => void
@@ -26,7 +26,7 @@ interface Props {
   onClose?: () => void
 }
 
-export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, onLogout, onCollapse, onClose, alertCount, userEmail }: Props) {
+export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, onLogout, onCollapse, onClose, alertCount, userEmail, userName }: Props) {
   const show = !mini || mobile
   const { tem, isAdminOrDirector } = usePermissions()
 
@@ -109,6 +109,7 @@ export default function Sidebar({ mini, mobile, page, setPage, dark, setDark, on
             <div style={{ width:30, height:30, borderRadius:8, background:'rgba(255,255,255,.15)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:5 }}>
               <Ic n="person" z={15} c="var(--sbf)"/>
             </div>
+            {userName && <p style={{ fontSize:11, fontWeight:800, color:'var(--sbf)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{userName}</p>}
             <p style={{ fontSize:9, color:'var(--sbf)', opacity:.5, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{userEmail}</p>
           </div>
         )}

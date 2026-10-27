@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { exigirPermissao } from '@/lib/supabase/exigirPermissao'
 import type { CreateUserRequest } from '@/services/auth'
 
 export const dynamic = 'force-dynamic'
@@ -7,6 +8,9 @@ export const revalidate = 0
 
 export async function POST(request: Request) {
   try {
+    const negado = await exigirPermissao('usuarios.criar')
+    if (negado) return negado
+
     const data = (await request.json()) as CreateUserRequest
     
     console.log('[invite] POST recebido:', { email: data.email, nome: data.nome })

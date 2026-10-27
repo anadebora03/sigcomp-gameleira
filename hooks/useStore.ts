@@ -89,7 +89,7 @@ export function useStore() {
         console.log('[store] usuários carregados:', usersRes.data.length)
         setUsuarios(usersRes.data.map((user: any) => ({
           id: user.id,
-          nome: user.nome || user.nome_completo || user.display_name || user.email || 'Usuário',
+          nome: user.nome_completo || user.nome || user.display_name || 'Sem nome',
           cargo: user.cargo || '',
           email: user.email || '',
           perfil: user.perfil || 'visualizador',

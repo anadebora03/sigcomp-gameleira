@@ -4,7 +4,7 @@ import { Ic, Card, Sb, G } from '@/components/ui/atoms'
 import { SECS, STO } from '@/lib/constants'
 import { gS } from '@/utils/helpers'
 import { fD, isOv, isSn } from '@/utils/formatters'
-import { getUser } from '@/services/auth'
+import UserAvatar from '@/components/ui/UserAvatar'
 import { usePermissions } from '@/hooks/usePermissions'
 import { resumoOF } from '@/utils/ordens'
 
@@ -20,7 +20,7 @@ function useClock() {
   return now
 }
 
-function ClockBar({ saudacao, nomeUsuario }: { saudacao: string; nomeUsuario: string }) {
+function ClockBar({ saudacao, nomeUsuario, fotoUrl }: { saudacao: string; nomeUsuario: string; fotoUrl?: string | null }) {
   const now = useClock()
   const dias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
   const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
@@ -30,10 +30,14 @@ function ClockBar({ saudacao, nomeUsuario }: { saudacao: string; nomeUsuario: st
 
   return (
     <div style={{ background: 'linear-gradient(135deg,#0d3d22,#1a5c38)', borderRadius: 14, padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-      <div style={{ minWidth: 240 }}>
-        <p style={{ fontSize: 16, fontWeight: 900, color: '#fff', margin: 0, lineHeight: 1.1 }}>{saudacao}, {nomeUsuario}!</p>
-        <p style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', margin: '8px 0 0', maxWidth: 420, lineHeight: 1.4 }}>Painel principal com dados de ofícios, processos e pesquisas de preço.</p>
-        
+      <div style={{ minWidth: 240, display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ borderRadius: '50%', boxShadow: '0 0 0 3px rgba(255,255,255,.25)', flexShrink: 0 }}>
+          <UserAvatar url={fotoUrl} nome={nomeUsuario} size={52} />
+        </div>
+        <div>
+          <p style={{ fontSize: 16, fontWeight: 900, color: '#fff', margin: 0, lineHeight: 1.1 }}>{nomeUsuario ? `${saudacao}, ${nomeUsuario}!` : `${saudacao}!`}</p>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', margin: '8px 0 0', maxWidth: 420, lineHeight: 1.4 }}>Painel principal com dados de ofícios, processos e pesquisas de preço.</p>
+        </div>
       </div>
       <div style={{ textAlign: 'right', minWidth: 180 }}>
         <p style={{ fontSize: 11, color: 'rgba(255,255,255,.75)', fontWeight: 600, margin: 0 }}>{dia} — {data}</p>
@@ -44,48 +48,9 @@ function ClockBar({ saudacao, nomeUsuario }: { saudacao: string; nomeUsuario: st
   )
 }
 
-export default function Dashboard({ user, oficios, processos, pesquisas, ordens = [] }: any) {
+export default function Dashboard({ nome, fotoUrl, oficios, processos, pesquisas, ordens = [] }: any) {
   const mob = useMob()
   const { tem } = usePermissions()
-  const [nomeUsuario, setNomeUsuario] = useState('Usuário')
-
-  useEffect(() => {
-    if (!user) return
-    const extractName = (value: string) => {
-      const clean = value.trim()
-      if (!clean) return 'Usuário'
-      return clean.split(' ')[0]
-    }
-
-    if (typeof user.user_metadata?.nome === 'string' && user.user_metadata.nome.trim()) {
-      setNomeUsuario(extractName(user.user_metadata.nome))
-      return
-    }
-
-    async function loadNome() {
-      try {
-        const result = await getUser(user.id)
-        if (result.success && result.data) {
-          const candidate = result.data.nome_completo || result.data.nome || result.data.display_name
-          if (candidate) {
-            setNomeUsuario(extractName(candidate))
-            return
-          }
-        } else {
-          console.error('[dashboard] erro ao buscar usuário:', result.error)
-        }
-      } catch (err) {
-        console.error('[dashboard] erro ao buscar usuário:', err)
-        // não mostrar mensagem técnica para o usuário
-      }
-
-      if (user?.email) {
-        setNomeUsuario(user.email.split('@')[0])
-      }
-    }
-
-    loadNome()
-  }, [user])
 
   const now = new Date()
   const hour = now.getHours()
@@ -117,7 +82,7 @@ export default function Dashboard({ user, oficios, processos, pesquisas, ordens 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <ClockBar saudacao={saudacao} nomeUsuario={nomeUsuario} />
+      <ClockBar saudacao={saudacao} nomeUsuario={nome || ''} fotoUrl={fotoUrl} />
       <div style={{ display: 'grid', gridTemplateColumns: mob ? '1fr 1fr' : 'repeat(6,1fr)', gap: 12 }}>
         {cards.map((c, i) => (
           <div key={i} style={{ background: `linear-gradient(135deg,${c.g})`, borderRadius: 16, padding: 16, color: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,.15)', animation: `fadeUp .4s ease ${i * .06}s both` }}>

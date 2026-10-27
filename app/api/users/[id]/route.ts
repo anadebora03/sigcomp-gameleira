@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { exigirPermissao } from '@/lib/supabase/exigirPermissao'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -13,6 +14,12 @@ interface Params {
 export async function PATCH(request: Request, { params }: Params) {
   const userId = params.id
   const body = await request.json()
+
+  // Só status → desativar/ativar; promover a admin/diretor exige acesso administrativo
+  const soStatus = Object.keys(body).every(k => k === 'status' || body[k] === undefined)
+  const negado = await exigirPermissao(soStatus ? 'usuarios.desativar' : 'usuarios.editar')
+    ?? (['administrador', 'admin', 'diretor_compras'].includes(body.perfil) ? await exigirPermissao('sistema.admin') : null)
+  if (negado) return negado
 
   console.log('[api/users/[id] PATCH] Recebido:', { userId, body })
 
@@ -73,6 +80,9 @@ export async function DELETE(_request: Request, { params }: Params) {
   const userId = params.id
 
   console.log('[api/users/[id] DELETE] Recebido:', { userId })
+
+  const negado = await exigirPermissao('usuarios.desativar')
+  if (negado) return negado
 
   try {
     const supabase = createAdminClient()
